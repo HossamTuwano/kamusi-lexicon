@@ -11,7 +11,6 @@ export enum EntryType {
 }
 
 @Entity('dictionary_entries')
-@Index(['source_language', 'target_language', 'source_word', 'target_word'], { unique: true })
 export class DictionaryEntry {
   @PrimaryGeneratedColumn()
   id: number;
@@ -35,6 +34,15 @@ export class DictionaryEntry {
   })
   word_type: EntryType;
 
+  @Column({ type: 'text', nullable: true })
+  definition: string;
+
+  @Column({ type: 'text', nullable: true })
+  example_sentence: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  source: string;
+
   @Column({ nullable: true })
   context_note: string;
 
@@ -52,7 +60,7 @@ export class DictionaryEntry {
   vote_count: number;
 
   @Column({ default: false })
-  is_hidden: boolean; // Added as per spec 6.3 recommendation
+  is_hidden: boolean;
 
   @CreateDateColumn()
   created_at: Date;

@@ -30,6 +30,21 @@ export class CreateEntryDto {
   @IsOptional()
   word_type: EntryType = EntryType.NOUN;
 
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  definition: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  example_sentence: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  source: string;
+
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
