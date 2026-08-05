@@ -15,17 +15,11 @@ export class DictionaryEntry {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  source_language: string;
-
-  @Column()
-  target_language: string;
+  @Column({ default: 'sw' })
+  language: string;
 
   @Column({ type: 'varchar' })
-  source_word: string;
-
-  @Column({ type: 'varchar' })
-  target_word: string;
+  lemma: string;
 
   @Column({
     type: 'enum',
@@ -34,7 +28,7 @@ export class DictionaryEntry {
   })
   word_type: EntryType;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text' })
   definition: string;
 
   @Column({ type: 'text', nullable: true })

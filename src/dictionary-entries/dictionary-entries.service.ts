@@ -16,28 +16,23 @@ export class DictionaryEntriesService {
   ) {}
 
   async search(dto: SearchDto) {
-    const { q, source, target, page = 1, limit = 20 } = dto;
+    const { q, page = 1, limit = 20 } = dto;
     const offset = (page - 1) * limit;
     
     const normQ = q?.trim().toLowerCase() || '';
-    const normS = source?.trim().toLowerCase() || '';
-    const normT = target?.trim().toLowerCase() || '';
 
-    const cacheKey = `search:${normS}:${normT}:${normQ}:${page}`;
+    const cacheKey = `search:${normQ}:${page}`;
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) return cached;
 
     const query = this.entryRepo.createQueryBuilder('entry');
 
-    if (normS) query.andWhere('lower(entry.source_language) = :normS', { normS });
-    if (normT) query.andWhere('lower(entry.target_language) = :normT', { normT });
-
     if (normQ) {
       query.andWhere(
-        '(entry.source_word % :q OR entry.target_word % :q)', 
+        'entry.lemma % :q', 
         { q: normQ }
       );
-      query.orderBy(`similarity(entry.source_word, :q) + similarity(entry.target_word, :q)`, 'DESC');
+      query.orderBy(`similarity(entry.lemma, :q)`, 'DESC');
     }
 
     query.andWhere('entry.is_hidden = false');
@@ -53,15 +48,13 @@ export class DictionaryEntriesService {
     try {
       const entry = this.entryRepo.create({
         ...dto,
+        language: 'sw',
         creatorId: userId,
         is_verified: false,
         vote_count: 0,
       });
       return await this.entryRepo.save(entry);
     } catch (e: any) {
-      if (e.code === '23505') {
-        throw new ConflictException('This translation already exists');
-      }
       throw e;
     }
   }

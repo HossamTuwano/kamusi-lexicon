@@ -6,24 +6,7 @@ export class CreateEntryDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  @Length(2, 5)
-  source_language: string;
-
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  @Length(2, 5)
-  target_language: string;
-
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  source_word: string;
-
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  target_word: string;
+  lemma: string;
 
   @ApiProperty({ enum: EntryType })
   @IsEnum(EntryType)
