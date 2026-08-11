@@ -1,0 +1,17 @@
+{
+  "name": "@kamusi/database",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "files": [
+    "dist",
+    "sql"
+  ],
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

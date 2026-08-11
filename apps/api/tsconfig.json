@@ -9,6 +9,9 @@
     "emitDecoratorMetadata": true,
     "skipLibCheck": true,
     "strict": false,
+    "esModuleInterop": true,
     "moduleResolution": "node"
-  }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["src/**/*.spec.ts", "node_modules", "dist", "test"]
 }

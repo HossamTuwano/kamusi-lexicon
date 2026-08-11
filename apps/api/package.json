@@ -1,7 +1,7 @@
 {
-  "name": "kamusi-web",
+  "name": "api",
   "version": "1.0.0",
-  "description": "Crowdsourced Dictionary API",
+  "description": "Kamusi Phase 1 API — Swahili monolingual lexical engine",
   "scripts": {
     "build": "npm run prebuild && nest build",
     "prebuild": "npm run clean && npm run precompile",
@@ -10,9 +10,14 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
-    "test": "jest"
+    "test": "vitest run --project unit",
+    "test:watch": "vitest --project unit",
+    "test:e2e": "RUN_E2E=1 vitest run --project e2e",
+    "test:all": "vitest run"
   },
   "dependencies": {
+    "@kamusi/core": "*",
+    "@kamusi/database": "*",
     "@nestjs/cache-manager": "^3.0.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^3.0.0",
@@ -39,10 +44,15 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
+    "@nestjs/testing": "^11.0.0",
     "@types/bcrypt": "^5.0.0",
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
     "@types/passport-jwt": "^4.0.1",
-    "typescript": "^5.0.0"
+    "@types/supertest": "^7.2.1",
+    "dotenv": "^16.4.5",
+    "supertest": "^7.2.2",
+    "typescript": "^5.0.0",
+    "vitest": "^4.1.10"
   }
 }

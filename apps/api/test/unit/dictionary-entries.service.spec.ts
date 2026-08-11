@@ -1,0 +1,339 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { CANONICAL_LANGUAGE, PartOfSpeech } from '@kamusi/core';
+import { DictionaryEntriesService } from '../../src/dictionary-entries/dictionary-entries.service';
+import { Lemma } from '../../src/dictionary-entries/entities/lemma.entity';
+import { Sense } from '../../src/dictionary-entries/entities/sense.entity';
+import { Example } from '../../src/dictionary-entries/entities/example.entity';
+import { LemmaContribution } from '../../src/dictionary-entries/entities/lemma-contribution.entity';
+import { LemmaRevision } from '../../src/dictionary-entries/entities/lemma-revision.entity';
+import { createMockCache, createMockRepository } from '../helpers/mock-repositories';
+import { validCreateDto } from '../helpers/phase1-fixtures';
+
+describe('DictionaryEntriesService — Phase 1', () => {
+  let service: DictionaryEntriesService;
+  let lemmaRepo: ReturnType<typeof createMockRepository>;
+  let senseRepo: ReturnType<typeof createMockRepository>;
+  let contributionRepo: ReturnType<typeof createMockRepository>;
+  let revisionRepo: ReturnType<typeof createMockRepository>;
+  let mockCache: ReturnType<typeof createMockCache>;
+
+  beforeEach(async () => {
+    lemmaRepo = createMockRepository();
+    senseRepo = createMockRepository();
+    contributionRepo = createMockRepository();
+    revisionRepo = createMockRepository();
+    mockCache = createMockCache();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        DictionaryEntriesService,
+        { provide: getRepositoryToken(Lemma), useValue: lemmaRepo },
+        { provide: getRepositoryToken(Sense), useValue: senseRepo },
+        { provide: getRepositoryToken(Example), useValue: createMockRepository() },
+        { provide: getRepositoryToken(LemmaContribution), useValue: contributionRepo },
+        { provide: getRepositoryToken(LemmaRevision), useValue: revisionRepo },
+        { provide: CACHE_MANAGER, useValue: mockCache },
+      ],
+    }).compile();
+
+    service = module.get(DictionaryEntriesService);
+  });
+
+  describe('create', () => {
+    it('creates a Swahili lemma with senses, contribution, and revision', async () => {
+      lemmaRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          id: 1,
+          word: 'gari',
+          language: CANONICAL_LANGUAGE,
+          version: 1,
+          senses: [{ definition: 'Chombo cha usafiri.' }],
+          contributions: [{ action: 'created' }],
+          revisions: [{ version: 1 }],
+        });
+
+      const dto = validCreateDto();
+      const result = await service.create(dto, 42);
+
+      expect(lemmaRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          word: 'gari',
+          language: CANONICAL_LANGUAGE,
+          part_of_speech: PartOfSpeech.NOUN,
+          plural: 'magari',
+          synonyms: ['motokaa'],
+          derived_words: ['dereva'],
+          dialect: 'Kiswahili sanifu',
+          source: 'test',
+          creator_id: 42,
+          is_verified: false,
+          version: 1,
+        }),
+      );
+      expect(contributionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'created', user_id: 42 }),
+      );
+      expect(revisionRepo.save).toHaveBeenCalled();
+      expect(result.word).toBe('gari');
+    });
+
+    it('rejects create without senses', async () => {
+      await expect(
+        service.create(validCreateDto({ senses: [] }), 1),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects empty Swahili definition', async () => {
+      await expect(
+        service.create(
+          validCreateDto({ senses: [{ definition: '   ' }] }),
+          1,
+        ),
+      ).rejects.toThrow('Each sense must have a non-empty Swahili definition');
+    });
+
+    it('rejects incomplete single-word English gloss', async () => {
+      await expect(
+        service.create(validCreateDto({ senses: [{ definition: 'car' }] }), 1),
+      ).rejects.toThrow('Definition looks incomplete');
+    });
+
+    it('rejects duplicate (word, part_of_speech)', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({ id: 99, word: 'gari' });
+
+      await expect(service.create(validCreateDto(), 1)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('allows same word with different part of speech', async () => {
+      lemmaRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          id: 2,
+          word: 'piga',
+          part_of_speech: PartOfSpeech.VERB,
+          language: CANONICAL_LANGUAGE,
+          senses: [],
+          contributions: [],
+          revisions: [],
+        });
+
+      const result = await service.create(
+        validCreateDto({
+          word: 'piga',
+          partOfSpeech: PartOfSpeech.VERB,
+          senses: [{ definition: 'Kupiga kitu kwa nguvu.' }],
+        }),
+        1,
+      );
+
+      expect(result.word).toBe('piga');
+    });
+  });
+
+  describe('update', () => {
+    const existingLemma = {
+      id: 1,
+      creator_id: 10,
+      language: CANONICAL_LANGUAGE,
+      version: 1,
+      is_verified: true,
+      senses: [{ definition: 'Maana ya zamani.', examples: [] }],
+    };
+
+    it('allows creator to update and bumps version', async () => {
+      lemmaRepo.findOne
+        .mockResolvedValueOnce({ ...existingLemma })
+        .mockResolvedValueOnce({
+          ...existingLemma,
+          version: 2,
+          is_verified: false,
+          contributions: [],
+          revisions: [],
+        });
+
+      const result = await service.update(
+        1,
+        { senses: [{ definition: 'Maana mpya ya Kiswahili.' }] },
+        10,
+        'contributor',
+      );
+
+      expect(lemmaRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ version: 2, is_verified: false }),
+      );
+      expect(contributionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'updated' }),
+      );
+      expect(result.version).toBe(2);
+    });
+
+    it('allows moderator to update another users entry', async () => {
+      lemmaRepo.findOne
+        .mockResolvedValueOnce({ ...existingLemma, creator_id: 99 })
+        .mockResolvedValueOnce({ ...existingLemma, creator_id: 99, version: 2 });
+
+      await service.update(
+        1,
+        { dialect: 'Kimvita' },
+        5,
+        'moderator',
+      );
+
+      expect(lemmaRepo.save).toHaveBeenCalled();
+    });
+
+    it('forbids non-owner contributor from updating', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({
+        ...existingLemma,
+        creator_id: 99,
+      });
+
+      await expect(
+        service.update(1, { source: 'bad' }, 10, 'contributor'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('delete', () => {
+    it('soft-deletes for owner and records contribution', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({
+        id: 1,
+        creator_id: 10,
+        is_verified: false,
+        is_hidden: false,
+      });
+
+      const result = await service.delete(1, 10, 'contributor');
+
+      expect(lemmaRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ is_hidden: true }),
+      );
+      expect(contributionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'deleted' }),
+      );
+      expect(result).toEqual({ deleted: true, soft: true });
+    });
+
+    it('forbids contributor from deleting verified entry', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({
+        id: 1,
+        creator_id: 10,
+        is_verified: true,
+      });
+
+      await expect(service.delete(1, 10, 'contributor')).rejects.toThrow(
+        'You cannot delete verified entries',
+      );
+    });
+
+    it('allows moderator to delete verified entry', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({
+        id: 1,
+        creator_id: 10,
+        is_verified: true,
+        is_hidden: false,
+      });
+
+      await service.delete(1, 99, 'moderator');
+      expect(lemmaRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ is_hidden: true }),
+      );
+    });
+
+    it('forbids non-owner contributor from deleting', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({
+        id: 1,
+        creator_id: 99,
+        is_verified: false,
+      });
+
+      await expect(service.delete(1, 10, 'contributor')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
+  describe('moderate', () => {
+    it('requires moderator role', async () => {
+      await expect(
+        service.moderate(1, 'verify', 1, 'contributor'),
+      ).rejects.toThrow('Moderator role required');
+    });
+
+    it('verifies lemma and records contribution', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({
+        id: 1,
+        is_verified: false,
+        is_hidden: false,
+      });
+
+      const result = await service.moderate(1, 'verify', 5, 'moderator');
+
+      expect(lemmaRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ is_verified: true, is_hidden: false }),
+      );
+      expect(contributionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'verified' }),
+      );
+      expect(result.is_verified).toBe(true);
+    });
+
+    it('hides and restores lemma', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({ id: 1, is_hidden: false });
+      await service.moderate(1, 'hide', 5, 'admin');
+      expect(contributionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'hidden' }),
+      );
+
+      lemmaRepo.findOne.mockResolvedValueOnce({ id: 1, is_hidden: true });
+      await service.moderate(1, 'restore', 5, 'admin');
+      expect(contributionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'restored' }),
+      );
+    });
+
+    it('throws when lemma not found', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce(null);
+      await expect(
+        service.moderate(404, 'verify', 5, 'moderator'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('search', () => {
+    it('returns cached results without hitting database', async () => {
+      mockCache.get.mockResolvedValueOnce([{ word: 'gari' }]);
+
+      const result = await service.search({ q: 'gari' });
+
+      expect(result).toEqual([{ word: 'gari' }]);
+      expect(lemmaRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('queries only visible Swahili lemmas when cache miss', async () => {
+      mockCache.get.mockResolvedValueOnce(null);
+
+      await service.search({ q: 'gari', page: 1, limit: 10 });
+
+      const qb = lemmaRepo.createQueryBuilder.mock.results[0].value;
+      expect(qb.andWhere).toHaveBeenCalledWith('lemma.is_hidden = false');
+      expect(qb.andWhere).toHaveBeenCalledWith('lemma.language = :lang', {
+        lang: CANONICAL_LANGUAGE,
+      });
+      expect(mockCache.set).toHaveBeenCalled();
+    });
+  });
+});

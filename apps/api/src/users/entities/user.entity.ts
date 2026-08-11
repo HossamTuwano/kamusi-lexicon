@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 import { Exclude } from 'class-transformer';
+import { UserRole } from '@kamusi/core';
 
 @Entity('users')
 export class User {
@@ -18,6 +19,10 @@ export class User {
 
   @Column({ default: 0 })
   reputation_score: number;
+
+  /** contributor | moderator | admin */
+  @Column({ type: 'varchar', default: 'contributor' })
+  role: UserRole;
 
   @CreateDateColumn()
   created_at: Date;

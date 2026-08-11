@@ -1,33 +1,25 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { configureApp } from './configure-app';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  configureApp(app);
 
-  app.setGlobalPrefix('api');
-
-  // Global Validation
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-  }));
-
-  // Swagger Configuration
   const config = new DocumentBuilder()
     .setTitle('Kamusi API')
-    .setDescription('Crowdsourced Dictionary API (Dict.cc Clone)')
+    .setDescription(
+      'Open Swahili lexical API — Phase 1 monolingual Kamusi (Swahili → Swahili). ' +
+        'Translations are out of scope until Phase 2. JSON wire format is camelCase.',
+    )
     .setVersion('1.0')
     .addServer('http://localhost:3001')
     .addBearerAuth()
     .build();
   const documents = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, documents);
-  
+
   await app.listen(3001);
 }
 bootstrap();

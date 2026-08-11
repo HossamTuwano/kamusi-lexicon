@@ -23,6 +23,9 @@ let DictionaryEntriesController = class DictionaryEntriesController {
         this.entriesService = entriesService;
     }
     async search(dto) {
+        if (!dto.q || dto.q.trim().length === 0) {
+            return [];
+        }
         return this.entriesService.search(dto);
     }
     async findOne(id) {
@@ -39,7 +42,7 @@ exports.DictionaryEntriesController = DictionaryEntriesController;
 __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Bidirectional fuzzy search' }),
     (0, common_1.Get)('search'),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [entry_dto_1.SearchDto]),
     __metadata("design:returntype", Promise)

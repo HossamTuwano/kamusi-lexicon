@@ -12,10 +12,47 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SearchDto = exports.CreateEntryDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
-const dictionary_entry_entity_1 = require("../entities/dictionary-entry.entity");
+const class_transformer_1 = require("class-transformer");
+const lemma_entity_1 = require("../entities/lemma.entity");
+class ExampleDto {
+}
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], ExampleDto.prototype, "sentence", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], ExampleDto.prototype, "note", void 0);
+class SenseDto {
+}
+__decorate([
+    (0, swagger_1.ApiProperty)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], SenseDto.prototype, "definition", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], SenseDto.prototype, "usage_note", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ type: [ExampleDto] }),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => ExampleDto),
+    __metadata("design:type", Array)
+], SenseDto.prototype, "examples", void 0);
 class CreateEntryDto {
     constructor() {
-        this.word_type = dictionary_entry_entity_1.EntryType.NOUN;
+        this.part_of_speech = lemma_entity_1.PartOfSpeech.NOUN;
     }
 }
 exports.CreateEntryDto = CreateEntryDto;
@@ -23,40 +60,40 @@ __decorate([
     (0, swagger_1.ApiProperty)(),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
-    (0, class_validator_1.Length)(2, 5),
     __metadata("design:type", String)
-], CreateEntryDto.prototype, "source_language", void 0);
+], CreateEntryDto.prototype, "word", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)(),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    (0, class_validator_1.Length)(2, 5),
-    __metadata("design:type", String)
-], CreateEntryDto.prototype, "target_language", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)(),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], CreateEntryDto.prototype, "source_word", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)(),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
-    __metadata("design:type", String)
-], CreateEntryDto.prototype, "target_word", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)({ enum: dictionary_entry_entity_1.EntryType }),
-    (0, class_validator_1.IsEnum)(dictionary_entry_entity_1.EntryType),
+    (0, swagger_1.ApiProperty)({ enum: lemma_entity_1.PartOfSpeech }),
+    (0, class_validator_1.IsEnum)(lemma_entity_1.PartOfSpeech),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
-], CreateEntryDto.prototype, "word_type", void 0);
+], CreateEntryDto.prototype, "part_of_speech", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ type: [SenseDto] }),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => SenseDto),
+    __metadata("design:type", Array)
+], CreateEntryDto.prototype, "senses", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)(),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
-], CreateEntryDto.prototype, "context_note", void 0);
+], CreateEntryDto.prototype, "pronunciation", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateEntryDto.prototype, "plural", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateEntryDto.prototype, "source", void 0);
 class SearchDto {
     constructor() {
         this.page = 1;
@@ -70,18 +107,6 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], SearchDto.prototype, "q", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)(),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], SearchDto.prototype, "source", void 0);
-__decorate([
-    (0, swagger_1.ApiProperty)(),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsOptional)(),
-    __metadata("design:type", String)
-], SearchDto.prototype, "target", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)(),
     (0, class_validator_1.IsOptional)(),

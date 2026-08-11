@@ -7,7 +7,21 @@
     "packages/*"
   ],
   "scripts": {
+    "build:core": "npm run build --workspace=@kamusi/core",
+    "build:database": "npm run build --workspace=@kamusi/database",
+    "build:packages": "npm run build:core && npm run build:database",
     "api": "npm run start --workspace=api",
-    "install:all": "npm install"
+    "api:dev": "npm run start:dev --workspace=api",
+    "web:dev": "npm run dev --workspace=web",
+    "test": "npm run test --workspace=api",
+    "test:e2e": "npm run test:e2e --workspace=api",
+    "install:all": "npm install && npm run build:packages"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0"
   }
 }

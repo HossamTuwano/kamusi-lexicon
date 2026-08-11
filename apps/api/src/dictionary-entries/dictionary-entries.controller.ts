@@ -2,23 +2,21 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   UseGuards,
   Request,
   Param,
   Delete,
-  NotFoundException,
-  ForbiddenException,
   Query,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
-  ApiQuery,
 } from '@nestjs/swagger';
 import { DictionaryEntriesService } from './dictionary-entries.service';
-import { CreateEntryDto, SearchDto } from './dto/entry.dto';
+import { CreateEntryDto, SearchDto, UpdateEntryDto } from './dto/entry.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
 @ApiTags('Dictionary')
@@ -26,7 +24,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 export class DictionaryEntriesController {
   constructor(private readonly entriesService: DictionaryEntriesService) {}
 
-  @ApiOperation({ summary: 'Bidirectional fuzzy search' })
+  @ApiOperation({ summary: 'Fuzzy search Swahili lemmas' })
   @Get('search')
   async search(@Query() dto: SearchDto) {
     if (!dto.q || dto.q.trim().length === 0) {
@@ -35,13 +33,13 @@ export class DictionaryEntriesController {
     return this.entriesService.search(dto);
   }
 
-  @ApiOperation({ summary: 'Fetch single entry' })
+  @ApiOperation({ summary: 'Fetch single lemma with senses, examples, history' })
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.entriesService.findOne(+id);
   }
 
-  @ApiOperation({ summary: 'Submit new entry' })
+  @ApiOperation({ summary: 'Submit new Swahili lemma (Phase 1)' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Post()
@@ -49,11 +47,35 @@ export class DictionaryEntriesController {
     return this.entriesService.create(dto, req.user.userId);
   }
 
-  @ApiOperation({ summary: 'Remove own unverified entry' })
+  @ApiOperation({ summary: 'Update lemma (creator or moderator); creates a revision' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id')
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateEntryDto,
+    @Request() req: any,
+  ) {
+    return this.entriesService.update(+id, dto, req.user.userId, req.user.role);
+  }
+
+  @ApiOperation({ summary: 'Remove own unverified entry (moderators may remove any)' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   async remove(@Param('id') id: string, @Request() req: any) {
-    return this.entriesService.delete(+id, req.user.userId);
+    return this.entriesService.delete(+id, req.user.userId, req.user.role);
+  }
+
+  @ApiOperation({ summary: 'Moderator action: verify | hide | restore' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/moderate')
+  async moderate(
+    @Param('id') id: string,
+    @Body('action') action: 'verify' | 'hide' | 'restore',
+    @Request() req: any,
+  ) {
+    return this.entriesService.moderate(+id, action, req.user.userId, req.user.role);
   }
 }

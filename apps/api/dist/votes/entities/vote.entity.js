@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.VerificationVote = void 0;
 const typeorm_1 = require("typeorm");
 const user_entity_1 = require("../../users/entities/user.entity");
-const dictionary_entry_entity_1 = require("../../dictionary-entries/entities/dictionary-entry.entity");
+const lemma_entity_1 = require("../../dictionary-entries/entities/lemma.entity");
 let VerificationVote = class VerificationVote {
 };
 exports.VerificationVote = VerificationVote;
@@ -37,9 +37,9 @@ __decorate([
     __metadata("design:type", Date)
 ], VerificationVote.prototype, "created_at", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => dictionary_entry_entity_1.DictionaryEntry, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.ManyToOne)(() => lemma_entity_1.Lemma, { onDelete: 'CASCADE' }),
     (0, typeorm_1.JoinColumn)({ name: 'entry_id' }),
-    __metadata("design:type", dictionary_entry_entity_1.DictionaryEntry)
+    __metadata("design:type", lemma_entity_1.Lemma)
 ], VerificationVote.prototype, "entry", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { onDelete: 'CASCADE' }),

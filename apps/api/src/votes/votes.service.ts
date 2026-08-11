@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { VerificationVote } from './entities/vote.entity';
-import { DictionaryEntry } from '../dictionary-entries/entities/dictionary-entry.entity';
+import { Lemma } from '../dictionary-entries/entities/lemma.entity';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { ForbiddenException, ConflictException } from '@nestjs/common';
@@ -12,7 +12,7 @@ export class VotesService {
   constructor(
     private dataSource: DataSource,
     @InjectRepository(VerificationVote) private voteRepo: Repository<VerificationVote>,
-    @InjectRepository(DictionaryEntry) private entryRepo: Repository<DictionaryEntry>,
+    @InjectRepository(Lemma) private lemmaRepo: Repository<Lemma>,
     private usersService: UsersService,
   ) {}
 
@@ -24,10 +24,10 @@ export class VotesService {
     await queryRunner.startTransaction();
 
     try {
-      const entry = await queryRunner.manager.findOne(DictionaryEntry, { where: { id: entryId } });
-      if (!entry) throw new NotFoundException();
+      const lemma = await queryRunner.manager.findOne(Lemma, { where: { id: entryId } });
+      if (!lemma) throw new NotFoundException();
 
-      if (entry.creatorId === userId) {
+      if (lemma.creator_id === userId) {
         throw new ForbiddenException('You cannot vote for your own entry');
       }
 
@@ -39,24 +39,24 @@ export class VotesService {
 
       const updateResult = await queryRunner.manager
         .createQueryBuilder()
-        .update(DictionaryEntry)
+        .update(Lemma)
         .set({ vote_count: () => `vote_count + ${voteType}` })
         .where('id = :id', { id: entryId })
         .returning(['vote_count', 'is_verified'])
         .execute();
 
-      const updatedEntry = updateResult.raw[0];
-      const newVoteCount = updatedEntry.vote_count;
+      const updatedLemma = updateResult.raw[0];
+      const newVoteCount = updatedLemma.vote_count;
 
-      if (newVoteCount >= 5 && !updatedEntry.is_verified) {
-        await queryRunner.manager.update(DictionaryEntry, entryId, { is_verified: true });
-        await this.usersService.updateReputation(entry.creatorId, 10);
+      if (newVoteCount >= 5 && !updatedLemma.is_verified) {
+        await queryRunner.manager.update(Lemma, entryId, { is_verified: true });
+        await this.usersService.updateReputation(lemma.creator_id, 10);
       } else if (newVoteCount <= -3) {
-        await queryRunner.manager.update(DictionaryEntry, entryId, { is_hidden: true });
+        await queryRunner.manager.update(Lemma, entryId, { is_hidden: true });
       }
 
       await queryRunner.commitTransaction();
-      return { vote_count: newVoteCount, is_verified: updatedEntry.is_verified };
+      return { vote_count: newVoteCount, is_verified: updatedLemma.is_verified };
     } catch (e: any) {
       await queryRunner.rollbackTransaction();
       if (e.code === '23505') throw new ConflictException('You have already voted on this entry');

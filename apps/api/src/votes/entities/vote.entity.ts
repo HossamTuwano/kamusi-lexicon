@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
-import { DictionaryEntry } from '../../dictionary-entries/entities/dictionary-entry.entity';
+import { Lemma } from '../../dictionary-entries/entities/lemma.entity';
 
 @Entity('verification_votes')
 @Unique(['entry_id', 'user_id'])
@@ -20,9 +20,9 @@ export class VerificationVote {
   @CreateDateColumn()
   created_at: Date;
 
-  @ManyToOne(() => DictionaryEntry, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Lemma, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'entry_id' })
-  entry: DictionaryEntry;
+  entry: Lemma;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })

@@ -9,7 +9,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DictionaryEntriesModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
-const dictionary_entry_entity_1 = require("./entities/dictionary-entry.entity");
+const lemma_entity_1 = require("./entities/lemma.entity");
+const sense_entity_1 = require("./entities/sense.entity");
+const example_entity_1 = require("./entities/example.entity");
 const dictionary_entries_service_1 = require("./dictionary-entries.service");
 const dictionary_entries_controller_1 = require("./dictionary-entries.controller");
 let DictionaryEntriesModule = class DictionaryEntriesModule {
@@ -17,7 +19,7 @@ let DictionaryEntriesModule = class DictionaryEntriesModule {
 exports.DictionaryEntriesModule = DictionaryEntriesModule;
 exports.DictionaryEntriesModule = DictionaryEntriesModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([dictionary_entry_entity_1.DictionaryEntry])],
+        imports: [typeorm_1.TypeOrmModule.forFeature([lemma_entity_1.Lemma, sense_entity_1.Sense, example_entity_1.Example])],
         providers: [dictionary_entries_service_1.DictionaryEntriesService],
         controllers: [dictionary_entries_controller_1.DictionaryEntriesController],
         exports: [dictionary_entries_service_1.DictionaryEntriesService, typeorm_1.TypeOrmModule],

@@ -1,19 +1,33 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
-import { EntryType } from '../entities/dictionary-entry.entity';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsArray,
+  ArrayMinSize,
+  ValidateNested,
+  ArrayUnique,
+  IsIn,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { PartOfSpeech } from '@kamusi/core';
 
-export class CreateEntryDto {
-  @ApiProperty()
+const PARTS_OF_SPEECH = Object.values(PartOfSpeech);
+
+class ExampleDto {
+  @ApiProperty({ description: 'Swahili example sentence' })
   @IsString()
   @IsNotEmpty()
-  lemma: string;
+  sentence: string;
 
-  @ApiProperty({ enum: EntryType })
-  @IsEnum(EntryType)
+  @ApiPropertyOptional()
+  @IsString()
   @IsOptional()
-  word_type: EntryType = EntryType.NOUN;
+  note?: string;
+}
 
-  @ApiProperty()
+class SenseDto {
+  @ApiProperty({ description: 'Swahili definition (required for Phase 1)' })
   @IsString()
   @IsNotEmpty()
   definition: string;
@@ -21,40 +35,134 @@ export class CreateEntryDto {
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
-  example_sentence: string;
+  usageNote?: string;
+
+  @ApiPropertyOptional({ type: [ExampleDto] })
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => ExampleDto)
+  examples?: ExampleDto[];
+}
+
+export class CreateEntryDto {
+  @ApiProperty({ example: 'gari' })
+  @IsString()
+  @IsNotEmpty()
+  word: string;
+
+  @ApiProperty({ enum: PARTS_OF_SPEECH })
+  @IsIn(PARTS_OF_SPEECH)
+  partOfSpeech: PartOfSpeech;
+
+  @ApiProperty({ type: [SenseDto], minItems: 1 })
+  @IsArray()
+  @ArrayMinSize(1, { message: 'At least one Swahili sense (definition) is required' })
+  @ValidateNested({ each: true })
+  @Type(() => SenseDto)
+  senses: SenseDto[];
 
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
-  source: string;
+  pronunciation?: string;
 
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
-  context_note: string;
+  plural?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsArray()
+  @IsOptional()
+  @IsString({ each: true })
+  @ArrayUnique()
+  synonyms?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsArray()
+  @IsOptional()
+  @IsString({ each: true })
+  @ArrayUnique()
+  antonyms?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsArray()
+  @IsOptional()
+  @IsString({ each: true })
+  @ArrayUnique()
+  derivedWords?: string[];
+
+  @ApiPropertyOptional({ example: 'Kiswahili sanifu' })
+  @IsString()
+  @IsOptional()
+  dialect?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  source?: string;
+}
+
+export class UpdateEntryDto {
+  @ApiPropertyOptional({ type: [SenseDto], minItems: 1 })
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => SenseDto)
+  senses?: SenseDto[];
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  pronunciation?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  plural?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsArray()
+  @IsOptional()
+  @IsString({ each: true })
+  synonyms?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsArray()
+  @IsOptional()
+  @IsString({ each: true })
+  antonyms?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsArray()
+  @IsOptional()
+  @IsString({ each: true })
+  derivedWords?: string[];
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  dialect?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  source?: string;
 }
 
 export class SearchDto {
-  @ApiProperty()
+  @ApiPropertyOptional()
   @IsString()
   @IsOptional()
   q?: string;
 
-  @ApiProperty()
-  @IsString()
-  @IsOptional()
-  source?: string;
-
-  @ApiProperty()
-  @IsString()
-  @IsOptional()
-  target?: string;
-
-  @ApiProperty()
+  @ApiPropertyOptional()
   @IsOptional()
   page?: number = 1;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
   @IsOptional()
   limit?: number = 20;
 }

@@ -17,14 +17,14 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const vote_entity_1 = require("./entities/vote.entity");
-const dictionary_entry_entity_1 = require("../dictionary-entries/entities/dictionary-entry.entity");
+const lemma_entity_1 = require("../dictionary-entries/entities/lemma.entity");
 const users_service_1 = require("../users/users.service");
 const common_2 = require("@nestjs/common");
 let VotesService = class VotesService {
-    constructor(dataSource, voteRepo, entryRepo, usersService) {
+    constructor(dataSource, voteRepo, lemmaRepo, usersService) {
         this.dataSource = dataSource;
         this.voteRepo = voteRepo;
-        this.entryRepo = entryRepo;
+        this.lemmaRepo = lemmaRepo;
         this.usersService = usersService;
     }
     async vote(entryId, userId, voteType) {
@@ -34,10 +34,10 @@ let VotesService = class VotesService {
         await queryRunner.connect();
         await queryRunner.startTransaction();
         try {
-            const entry = await queryRunner.manager.findOne(dictionary_entry_entity_1.DictionaryEntry, { where: { id: entryId } });
-            if (!entry)
+            const lemma = await queryRunner.manager.findOne(lemma_entity_1.Lemma, { where: { id: entryId } });
+            if (!lemma)
                 throw new common_1.NotFoundException();
-            if (entry.creatorId === userId) {
+            if (lemma.creator_id === userId) {
                 throw new common_2.ForbiddenException('You cannot vote for your own entry');
             }
             await queryRunner.manager.insert(vote_entity_1.VerificationVote, {
@@ -47,22 +47,22 @@ let VotesService = class VotesService {
             });
             const updateResult = await queryRunner.manager
                 .createQueryBuilder()
-                .update(dictionary_entry_entity_1.DictionaryEntry)
+                .update(lemma_entity_1.Lemma)
                 .set({ vote_count: () => `vote_count + ${voteType}` })
                 .where('id = :id', { id: entryId })
                 .returning(['vote_count', 'is_verified'])
                 .execute();
-            const updatedEntry = updateResult.raw[0];
-            const newVoteCount = updatedEntry.vote_count;
-            if (newVoteCount >= 5 && !updatedEntry.is_verified) {
-                await queryRunner.manager.update(dictionary_entry_entity_1.DictionaryEntry, entryId, { is_verified: true });
-                await this.usersService.updateReputation(entry.creatorId, 10);
+            const updatedLemma = updateResult.raw[0];
+            const newVoteCount = updatedLemma.vote_count;
+            if (newVoteCount >= 5 && !updatedLemma.is_verified) {
+                await queryRunner.manager.update(lemma_entity_1.Lemma, entryId, { is_verified: true });
+                await this.usersService.updateReputation(lemma.creator_id, 10);
             }
             else if (newVoteCount <= -3) {
-                await queryRunner.manager.update(dictionary_entry_entity_1.DictionaryEntry, entryId, { is_hidden: true });
+                await queryRunner.manager.update(lemma_entity_1.Lemma, entryId, { is_hidden: true });
             }
             await queryRunner.commitTransaction();
-            return { vote_count: newVoteCount, is_verified: updatedEntry.is_verified };
+            return { vote_count: newVoteCount, is_verified: updatedLemma.is_verified };
         }
         catch (e) {
             await queryRunner.rollbackTransaction();
@@ -84,7 +84,7 @@ exports.VotesService = VotesService;
 exports.VotesService = VotesService = __decorate([
     (0, common_1.Injectable)(),
     __param(1, (0, typeorm_1.InjectRepository)(vote_entity_1.VerificationVote)),
-    __param(2, (0, typeorm_1.InjectRepository)(dictionary_entry_entity_1.DictionaryEntry)),
+    __param(2, (0, typeorm_1.InjectRepository)(lemma_entity_1.Lemma)),
     __metadata("design:paramtypes", [typeorm_2.DataSource,
         typeorm_2.Repository,
         typeorm_2.Repository,

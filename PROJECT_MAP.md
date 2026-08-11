@@ -1,41 +1,49 @@
 # 🧠 PROJECT MAP: kamusi-lexicon
 
 ## 🚩 THE DIRECTIVE
-This project is a lifelong mission to build a professional, open-source lexical infrastructure for the Swahili language. 
-**The primary goal is a monolingual Swahili-to-Swahili Kamusi.**
 
-**CRITICAL DOCUMENTS:**
-- `apps/api/CONSTITUTION.md`: The unchanging laws of the project.
-- `apps/api/VISION.md`: The long-term goal and "North Star."
+Lifelong mission: professional, open-source lexical infrastructure for Swahili.
+**Primary goal: monolingual Swahili → Swahili Kamusi (Phase 1).**
+
+**CRITICAL DOCUMENTS (read in order):**
+
+1. `apps/api/CONSTITUTION.md` — unchanging laws
+2. `apps/api/VISION.md` — north star
+3. `HANDOVER.md` — operational truth for the next session/model
+4. `JOURNAL.md` — decision history (append-only)
+5. `packages/core/src/index.ts` — canonical data model
 
 ---
 
 ## 🏗️ ARCHITECTURE (Monorepo)
-This is an NPM Workspaces monorepo designed for extreme longevity and scalability.
 
-### `/apps` (Deployable Applications)
-- `apps/api`: The core NestJS engine. Currently the primary source of logic.
-- `apps/web`: (Planned) Public-facing dictionary.
-- `apps/admin`: (Planned) Expert moderation and curation tool.
+NPM Workspaces.
 
-### `/packages` (The Shared Truth)
-- `packages/core`: **The Canonical Data Model.** This is the most important package. It defines what a Lemma, Sense, and Entry are. It ensures that the API, Web, and Admin apps all speak the same linguistic language.
-- `packages/database`: Shared database schemas and migration logic.
+### `/apps`
 
----
+- `apps/api` — NestJS engine (primary logic today)
+- `apps/web` — Phase 1 public Kamusi (Vite + React)
+- `apps/admin` — planned moderation UI
 
-## 📍 CURRENT STATUS (August 5, 2026)
-- **Phase:** 1 (Swahili $\rightarrow$ Swahili).
-- **Current Objective:** Evolving the data model from a "flat" structure (one word = one definition) to a "structured" model (Lemma $\rightarrow$ Multiple Senses $\rightarrow$ Multiple Examples).
-- **Recent Milestone:** Successfully converted the project from a single API repo to a Monorepo structure to support future growth.
+### `/packages`
+
+- `packages/core` — **canonical types**. Import; do not duplicate.
+- `packages/database` — schema constants + SQL bootstrap notes
 
 ---
 
-## 📝 HANDOVER INSTRUCTIONS FOR FUTURE MODELS
-If you are a new model taking over this session:
-1. **Do not assume this is a simple dictionary app.** It is linguistic infrastructure.
-2. **Read `apps/api/CONSTITUTION.md` immediately.** If a feature request conflicts with the Constitution, the Constitution wins.
-3. **Prioritize `packages/core`.** The "truth" of the language must live in the shared core, not buried in the API controllers.
-4. **Maintain the Journal.** Every major decision must be documented in the project's history to ensure continuity across sessions.
+## 📍 CURRENT STATUS (August 6, 2026)
 
-*This project is a mission of service. Build it with precision, dignity, and respect for the Swahili language.*
+- **Phase:** 1 (Swahili → Swahili)
+- **Data model:** Lemma → Senses → Examples, plus synonyms/antonyms/derived words/dialect/source
+- **API wire format:** camelCase
+- **Governance:** contributor history, revisions, moderator roles
+- **Recent work:** frontend readiness gaps 1–5 (CORS, camelCase, votes e2e, migrations gate, `apps/web`)
+
+---
+
+## 📝 HANDOVER
+
+Start at `HANDOVER.md`. Maintain `JOURNAL.md` after every major decision.
+
+_This project is a mission of service. Build it with precision, dignity, and respect for the Swahili language._
