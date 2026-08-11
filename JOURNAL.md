@@ -5,6 +5,18 @@ Append newest entries at the top. Prefer evidence over persuasion.
 
 ---
 
+## 2026-08-11 — Admin UI CORS & Docker monorepo build fixes
+
+**Context:** Docker build failed on `@kamusi/core` npm 404 when building `api` image in `apps/api/docker-compose.yml`, and Admin UI login encountered CORS preflight issues.
+
+**Decisions / changes:**
+
+1. **Docker monorepo build context**: Removed obsolete `version: '3.8'` attribute from `docker-compose.yml`. Configured `api` service build context to monorepo root (`context: ../..`, `dockerfile: apps/api/Dockerfile`) so Docker inherits `packages/core` and workspace manifests instead of querying the public NPM registry.
+2. **Explicit CORS configuration**: Configured explicit `app.enableCors` inside `configureApp(app)` targeting `CORS_ORIGINS` (including `http://localhost:5174` for `apps/admin` and `5173` for `apps/web`) with credentials and headers allowed (`Authorization`, `Content-Type`, etc.).
+3. **Admin login token compatibility**: Updated `LoginPage.tsx` to handle `accessToken` (camelCase wire format) alongside `access_token`.
+
+---
+
 ## 2026-08-06 — Frontend readiness gaps 1–5
 
 **Context:** Unit/e2e green, but five gaps blocked a real Phase 1 browser consumer.

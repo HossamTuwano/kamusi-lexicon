@@ -18,6 +18,7 @@ const auth_module_1 = require("./auth/auth.module");
 const users_module_1 = require("./users/users.module");
 const dictionary_entries_module_1 = require("./dictionary-entries/dictionary-entries.module");
 const votes_module_1 = require("./votes/votes.module");
+const database_bootstrap_service_1 = require("./db/database-bootstrap.service");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -33,7 +34,10 @@ exports.AppModule = AppModule = __decorate([
                 password: process.env.DB_PASSWORD,
                 database: process.env.DB_NAME,
                 autoLoadEntities: true,
-                synchronize: true,
+                // Prefer migrations in shared/staging/prod. Local/e2e may set DB_SYNC=true.
+                // Apply schema via packages/database/sql/001_phase1_bootstrap.sql
+                // or TypeORM CLI against src/db/migrations (do not glob .ts at runtime).
+                synchronize: process.env.DB_SYNC === 'true',
             }),
             cache_manager_1.CacheModule.registerAsync({
                 isGlobal: true,
@@ -53,6 +57,6 @@ exports.AppModule = AppModule = __decorate([
             votes_module_1.VotesModule,
         ],
         controllers: [app_controller_1.AppController],
-        providers: [app_service_1.AppService],
+        providers: [app_service_1.AppService, database_bootstrap_service_1.DatabaseBootstrapService],
     })
 ], AppModule);

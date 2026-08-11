@@ -3,21 +3,27 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
-COPY package*.json ./
+# Copy entire monorepo
+COPY . .
+
+# Install dependencies across workspace
 RUN npm install --legacy-peer-deps
 
-COPY . .
-RUN npm run build
+# Build API workspace target
+RUN npm run build --workspace=apps/api
 
 # Production stage
 FROM node:20-alpine
 
 WORKDIR /app
 
-COPY --from=build /app/package*.json ./
-RUN npm install --omit=dev --legacy-peer-deps
+COPY . .
 
-COPY --from=build /app/dist ./dist
+RUN npm install --legacy-peer-deps
+
+COPY --from=build /app/apps/api/dist ./apps/api/dist
+
+WORKDIR /app/apps/api
 
 EXPOSE 3001
 CMD ["node", "dist/main.js"]

@@ -34,13 +34,19 @@ let DictionaryEntriesController = class DictionaryEntriesController {
     async create(dto, req) {
         return this.entriesService.create(dto, req.user.userId);
     }
+    async update(id, dto, req) {
+        return this.entriesService.update(+id, dto, req.user.userId, req.user.role);
+    }
     async remove(id, req) {
-        return this.entriesService.delete(+id, req.user.userId);
+        return this.entriesService.delete(+id, req.user.userId, req.user.role);
+    }
+    async moderate(id, action, req) {
+        return this.entriesService.moderate(+id, action, req.user.userId, req.user.role);
     }
 };
 exports.DictionaryEntriesController = DictionaryEntriesController;
 __decorate([
-    (0, swagger_1.ApiOperation)({ summary: 'Bidirectional fuzzy search' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Fuzzy search Swahili lemmas' }),
     (0, common_1.Get)('search'),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
@@ -48,7 +54,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], DictionaryEntriesController.prototype, "search", null);
 __decorate([
-    (0, swagger_1.ApiOperation)({ summary: 'Fetch single entry' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Fetch single lemma with senses, examples, history' }),
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -56,7 +62,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], DictionaryEntriesController.prototype, "findOne", null);
 __decorate([
-    (0, swagger_1.ApiOperation)({ summary: 'Submit new entry' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Submit new Swahili lemma (Phase 1)' }),
     (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Post)(),
@@ -67,7 +73,19 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], DictionaryEntriesController.prototype, "create", null);
 __decorate([
-    (0, swagger_1.ApiOperation)({ summary: 'Remove own unverified entry' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Update lemma (creator or moderator); creates a revision' }),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Patch)(':id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, entry_dto_1.UpdateEntryDto, Object]),
+    __metadata("design:returntype", Promise)
+], DictionaryEntriesController.prototype, "update", null);
+__decorate([
+    (0, swagger_1.ApiOperation)({ summary: 'Remove own unverified entry (moderators may remove any)' }),
     (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Delete)(':id'),
@@ -77,6 +95,18 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], DictionaryEntriesController.prototype, "remove", null);
+__decorate([
+    (0, swagger_1.ApiOperation)({ summary: 'Moderator action: verify | hide | restore' }),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Post)(':id/moderate'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)('action')),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", Promise)
+], DictionaryEntriesController.prototype, "moderate", null);
 exports.DictionaryEntriesController = DictionaryEntriesController = __decorate([
     (0, swagger_1.ApiTags)('Dictionary'),
     (0, common_1.Controller)('entries'),

@@ -5,9 +5,11 @@ import { configureApp } from './configure-app';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  
   configureApp(app);
 
   const config = new DocumentBuilder()
+
     .setTitle('Kamusi API')
     .setDescription(
       'Open Swahili lexical API — Phase 1 monolingual Kamusi (Swahili → Swahili). ' +
@@ -20,6 +22,6 @@ async function bootstrap() {
   const documents = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, documents);
 
-  await app.listen(3001);
+  await app.listen(process.env.PORT || 3001);
 }
 bootstrap();
