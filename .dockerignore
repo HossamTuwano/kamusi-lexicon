@@ -1,0 +1,20 @@
+# VCS
+.git
+.gitignore
+
+# Dependencies / build output (never copied into the image)
+**/node_modules
+**/dist
+**/build
+**/*.tsbuildinfo
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Logs / local tooling
+*.log
+.DS_Store
+.temp
+.tmp

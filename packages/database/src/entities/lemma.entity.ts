@@ -65,7 +65,7 @@ export class Lemma {
   @Column({ default: false })
   is_hidden: boolean;
 
-  @Column({ nullable: true })
+  @Column({ type: 'integer', nullable: true })
   creator_id: number | null;
 
   /** Starts at 1; increments on each content update. */

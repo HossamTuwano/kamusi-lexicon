@@ -82,7 +82,7 @@ __decorate([
     __metadata("design:type", Boolean)
 ], Lemma.prototype, "is_hidden", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
+    (0, typeorm_1.Column)({ type: 'integer', nullable: true }),
     __metadata("design:type", Object)
 ], Lemma.prototype, "creator_id", void 0);
 __decorate([

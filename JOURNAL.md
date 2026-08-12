@@ -5,6 +5,22 @@ Append newest entries at the top. Prefer evidence over persuasion.
 
 ---
 
+## 2026-08-12 — Dockerized API fixed (monorepo install + module resolution)
+
+**Context:** `docker compose up` failed at runtime with `PackageLoader: The "class-validator" package is missing`. Root cause was three layered issues in the API image:
+
+1. **Stale/incomplete Dockerfile** — copied host `node_modules`, re-ran `npm install` in the production stage, and only built `apps/api` (never `@kamusi/core`/`@kamusi/database`). Rewrote it: layered manifest copy + `npm ci --legacy-peer-deps`, builds packages in dependency order, production stage copies only the runtime tree. Added repo-root `.dockerignore` (excludes `**/node_modules`, `**/dist`, `.env*`).
+2. **Hoisting bug (the real one)** — npm nested `class-validator` under `apps/api/node_modules`, but `@nestjs/common` is hoisted to root. Nest `require`s `class-validator` from inside `@nestjs/common`, so root resolution failed. Local dev only worked because of a stray `/home/hossam/node_modules/class-validator`. Fix: declare `class-transformer` + `class-validator` as root `dependencies` so npm must install them at root `node_modules`.
+3. **`@kamusi/database` had undeclared deps** — it imports `typeorm`/`class-transformer`/`@kamusi/core` but declared only `typescript`; the Docker build failed `tsc` on them. Added them to `packages/database/package.json`; `typeorm` is now hoisted to root.
+4. **`Lemma.creator_id: number | null`** — union type reflects as `design:type: Object` (`emitDecoratorMetadata`), so TypeORM sync failed with `DataTypeNotSupportedError`. Added explicit `type: 'integer'`.
+5. **`NODE_ENV=production` was hardcoded in the image** — that disables the admin seed. Moved control to compose: `NODE_ENV: ${NODE_ENV:-development}` (matches `DB_SYNC: ${DB_SYNC:-true}`). Compose stack is self-bootstrapping: schema sync + admin seed (`admin`/`admin123`).
+
+**Verification:** image builds; container boots; login → create → hide → public search excludes → moderation search includes → restore all pass against the containerized API. Unit tests 30/30, admin `tsc` clean.
+
+**Lesson:** do not rely on hoisting for Nest's dynamically-required packages (`class-validator`/`class-transformer`); the root workspace must own them. Docker build (`docker compose build api`) is the authoritative check, not local dev.
+
+---
+
 ## 2026-08-12 — Moderator search wired into admin dashboard (hidden entries)
 
 **Context:** The API already exposed `GET /entries/moderation/search` (includes hidden entries, moderator-only), but the admin UI was not using it. `getHidden()` in `lemmas.ts` was a stub that called the public search (which filters `is_hidden=false`) and therefore always returned `[]`. Hidden entries could not be listed or restored from the dashboard.
