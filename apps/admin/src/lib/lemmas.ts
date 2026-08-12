@@ -12,12 +12,18 @@ export const lemmaKeys = {
 
 // Colocated Query Functions
 export const lemmaApi = {
+  // Fetch all entries, filter client-side for unverified (isVerified = false)
   getPending: async (q = '') => {
-    return authenticatedFetch(`/entries/search?q=${q}`)
+    const url = q ? `/entries/search?q=${q}` : '/entries/search?q='
+    const res = await authenticatedFetch(url)
+    // Filter to only unverified entries (moderator dashboard shows pending)
+    return Array.isArray(res) ? res.filter((e: any) => !e.isVerified) : []
   },
-  moderate: async ({ id, action }: { id: string, action: 'verify' | 'hide' | 'restore' }) => {
+  moderate: async ({ id, action }: { id: number | string, action: 'verify' | 'hide' | 'restore' }) => {
     return authenticatedFetch(`/entries/${id}/moderate`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
     })
   }
 }
