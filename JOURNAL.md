@@ -5,7 +5,69 @@ Append newest entries at the top. Prefer evidence over persuasion.
 
 ---
 
+## 2026-08-12 — Admin UI moderation dashboard implemented
+
+**Context:** Phase 1 API was fully functional (all 17 e2e tests passing), but Admin UI dashboard wasn't wired to the moderation endpoints. Task: complete the dashboard to enable moderators to review and verify/hide entries.
+
+**Changes:**
+1. **apps/admin/src/lib/lemmas.ts**:
+   - Fixed `getPending()` to filter entries for unverified only (isVerified=false) — was returning all entries
+   - Fixed `moderate()` to send action in request body instead of query param (API spec requires body)
+
+2. **apps/admin/src/pages/DashboardPage.tsx**:
+   - Added role-based button disabling (only moderators/admins can moderate)
+   - Added better card display: word, definition, example sentence, contributor info
+   - Added visual feedback during moderation (opacity change)
+   - Improved empty state message
+   - Added helpful warnings for non-moderator accounts
+
+**Features now working:**
+- ✅ List unverified lemmas in grid view
+- ✅ Verify button (calls POST /entries/:id/moderate with action=verify)
+- ✅ Hide button (calls POST /entries/:id/moderate with action=hide)
+- ✅ Role-based access control (visibly disabled for non-moderators)
+- ✅ Auto-refresh on successful moderation (React Query invalidation)
+- ✅ Loading/error states with user-friendly messages
+
+**Test result:**
+- ✅ All 17 e2e tests still passing (no regressions)
+- ✅ Moderation endpoint tested end-to-end in e2e suite
+
+**Scope for future:**
+- Restore button for explicitly viewing/restoring hidden entries (low priority — hidden entries can be restored via API if needed)
+- Search/filter by word or contributor (future enhancement)
+- Bulk actions (future enhancement)
+
+---
+
 ## 2026-08-12 — ValidationPipe forbidNonWhitelisted + nested DTO fix
+
+**Context:** Phase 1 e2e tests were failing (10/17) with 400 Bad Request on POST /entries. Root cause: `forbidNonWhitelisted: true` was rejecting nested Sense/Example DTO properties before `class-transformer` could instantiate them.
+
+**Error symptom:**
+```json
+{
+  "message": [
+    "senses.0.property definition should not exist",
+    "senses.0.property usageNote should not exist",
+    "senses.0.property examples should not exist"
+  ],
+  "statusCode": 400
+}
+```
+
+**Fix applied:**
+- Modified `apps/api/src/configure-app.ts` ValidationPipe configuration
+- Added `transformOptions: { enableImplicitConversion: true, excludeExtraneousValues: false, exposeDefaultValues: true }`
+- This allows `class-transformer` to transform nested DTOs before validation rejects them
+- No code logic changed; only validation/transform pipeline order
+
+**Outcome:**
+- ✅ All 17 e2e tests now pass (was 7/17)
+- ✅ All 29 unit tests still pass
+- ✅ Phase 1 compliance verified end-to-end (search, create, update, delete, moderate, vote)
+
+---
 
 **Context:** Phase 1 e2e tests were failing (10/17) with 400 Bad Request on POST /entries. Root cause: `forbidNonWhitelisted: true` was rejecting nested Sense/Example DTO properties before `class-transformer` could instantiate them.
 
