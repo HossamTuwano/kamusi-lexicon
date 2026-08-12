@@ -24,6 +24,11 @@ function configureApp(app) {
         whitelist: true,
         forbidNonWhitelisted: true,
         transform: true,
+        transformOptions: {
+            enableImplicitConversion: true,
+            excludeExtraneousValues: false,
+            exposeDefaultValues: true,
+        },
     }));
     app.useGlobalInterceptors(new camel_case_interceptor_1.CamelCaseInterceptor());
 }

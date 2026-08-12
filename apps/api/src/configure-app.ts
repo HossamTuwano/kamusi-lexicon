@@ -28,6 +28,11 @@ export function configureApp(app: INestApplication): void {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+        excludeExtraneousValues: false,
+        exposeDefaultValues: true,
+      },
     }),
   );
 

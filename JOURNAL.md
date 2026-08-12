@@ -5,7 +5,46 @@ Append newest entries at the top. Prefer evidence over persuasion.
 
 ---
 
+## 2026-08-12 — ValidationPipe forbidNonWhitelisted + nested DTO fix
+
+**Context:** Phase 1 e2e tests were failing (10/17) with 400 Bad Request on POST /entries. Root cause: `forbidNonWhitelisted: true` was rejecting nested Sense/Example DTO properties before `class-transformer` could instantiate them.
+
+**Error symptom:**
+```json
+{
+  "message": [
+    "senses.0.property definition should not exist",
+    "senses.0.property usageNote should not exist",
+    "senses.0.property examples should not exist"
+  ],
+  "statusCode": 400
+}
+```
+
+**Fix applied:**
+- Modified `apps/api/src/configure-app.ts` ValidationPipe configuration
+- Added `transformOptions: { enableImplicitConversion: true, excludeExtraneousValues: false, exposeDefaultValues: true }`
+- This allows `class-transformer` to transform nested DTOs before validation rejects them
+- No code logic changed; only validation/transform pipeline order
+
+**Outcome:**
+- ✅ All 17 e2e tests now pass (was 7/17)
+- ✅ All 29 unit tests still pass
+- ✅ Phase 1 compliance verified end-to-end (search, create, update, delete, moderate, vote)
+
+---
+
 ## 2026-08-11 — Admin UI CORS & Docker monorepo build fixes
+
+**Context:** Docker build failed on `@kamusi/core` npm 404 when building `api` image in `apps/api/docker-compose.yml`, and Admin UI login encountered CORS preflight issues.
+
+**Decisions / changes:**
+
+1. **Docker monorepo build context**: Removed obsolete `version: '3.8'` attribute from `docker-compose.yml`. Configured `api` service build context to monorepo root (`context: ../..`, `dockerfile: apps/api/Dockerfile`) so Docker inherits `packages/core` and workspace manifests instead of querying the public NPM registry.
+2. **Explicit CORS configuration**: Configured explicit `app.enableCors` inside `configureApp(app)` targeting `CORS_ORIGINS` (including `http://localhost:5174` for `apps/admin` and `5173` for `apps/web`) with credentials and headers allowed (`Authorization`, `Content-Type`, etc.).
+3. **Admin login token compatibility**: Updated `LoginPage.tsx` to handle `accessToken` (camelCase wire format) alongside `access_token`.
+
+---
 
 **Context:** Docker build failed on `@kamusi/core` npm 404 when building `api` image in `apps/api/docker-compose.yml`, and Admin UI login encountered CORS preflight issues.
 
