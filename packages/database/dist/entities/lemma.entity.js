@@ -43,11 +43,11 @@ __decorate([
 ], Lemma.prototype, "part_of_speech", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
-    __metadata("design:type", String)
+    __metadata("design:type", Object)
 ], Lemma.prototype, "pronunciation", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
-    __metadata("design:type", String)
+    __metadata("design:type", Object)
 ], Lemma.prototype, "plural", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', array: true, default: '{}' }),
@@ -63,11 +63,11 @@ __decorate([
 ], Lemma.prototype, "derived_words", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
-    __metadata("design:type", String)
+    __metadata("design:type", Object)
 ], Lemma.prototype, "dialect", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
-    __metadata("design:type", String)
+    __metadata("design:type", Object)
 ], Lemma.prototype, "source", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: false }),
@@ -83,7 +83,7 @@ __decorate([
 ], Lemma.prototype, "is_hidden", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Number)
+    __metadata("design:type", Object)
 ], Lemma.prototype, "creator_id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: 1 }),

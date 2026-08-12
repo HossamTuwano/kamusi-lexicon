@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { VerificationVote } from './entities/vote.entity';
+import { VerificationVote } from '@kamusi/database';
 import { VotesService } from './votes.service';
 import { VotesController } from './votes.controller';
 import { DictionaryEntriesModule } from '../dictionary-entries/dictionary-entries.module';

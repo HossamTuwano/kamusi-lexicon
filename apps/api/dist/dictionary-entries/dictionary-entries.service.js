@@ -17,11 +17,7 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const core_1 = require("@kamusi/core");
-const lemma_entity_1 = require("./entities/lemma.entity");
-const sense_entity_1 = require("./entities/sense.entity");
-const example_entity_1 = require("./entities/example.entity");
-const lemma_contribution_entity_1 = require("./entities/lemma-contribution.entity");
-const lemma_revision_entity_1 = require("./entities/lemma-revision.entity");
+const database_1 = require("@kamusi/database");
 const cache_manager_1 = require("@nestjs/cache-manager");
 const common_2 = require("@nestjs/common");
 function isModerator(role) {
@@ -55,6 +51,35 @@ let DictionaryEntriesService = class DictionaryEntriesService {
                 .orderBy('search_rank', 'DESC');
         }
         query.andWhere('lemma.is_hidden = false');
+        query.andWhere('lemma.language = :lang', { lang: core_1.CANONICAL_LANGUAGE });
+        query.skip(offset).take(limit);
+        const results = await query.getMany();
+        await this.cacheManager.set(cacheKey, results, 3600);
+        return results;
+    }
+    /**
+     * Moderator search includes hidden entries.
+     * Public search intentionally hides them to keep Phase 1 UI safe.
+     */
+    async searchModeration(dto) {
+        const { q, page = 1, limit = 20 } = dto;
+        const offset = (page - 1) * limit;
+        const normQ = q?.trim().toLowerCase() || '';
+        const cacheKey = `moderation_search:${normQ}:${page}`;
+        const cached = await this.cacheManager.get(cacheKey);
+        if (cached)
+            return cached;
+        const query = this.lemmaRepo
+            .createQueryBuilder('lemma')
+            .leftJoinAndSelect('lemma.senses', 'sense')
+            .leftJoinAndSelect('sense.examples', 'example');
+        if (normQ) {
+            query.andWhere('lemma.word % :q', { q: normQ });
+            query
+                .addSelect('similarity(lemma.word, :q)', 'search_rank')
+                .orderBy('search_rank', 'DESC');
+        }
+        // Unlike public search, do NOT force is_hidden=false.
         query.andWhere('lemma.language = :lang', { lang: core_1.CANONICAL_LANGUAGE });
         query.skip(offset).take(limit);
         const results = await query.getMany();
@@ -264,11 +289,11 @@ let DictionaryEntriesService = class DictionaryEntriesService {
 exports.DictionaryEntriesService = DictionaryEntriesService;
 exports.DictionaryEntriesService = DictionaryEntriesService = __decorate([
     (0, common_1.Injectable)(),
-    __param(0, (0, typeorm_1.InjectRepository)(lemma_entity_1.Lemma)),
-    __param(1, (0, typeorm_1.InjectRepository)(sense_entity_1.Sense)),
-    __param(2, (0, typeorm_1.InjectRepository)(example_entity_1.Example)),
-    __param(3, (0, typeorm_1.InjectRepository)(lemma_contribution_entity_1.LemmaContribution)),
-    __param(4, (0, typeorm_1.InjectRepository)(lemma_revision_entity_1.LemmaRevision)),
+    __param(0, (0, typeorm_1.InjectRepository)(database_1.Lemma)),
+    __param(1, (0, typeorm_1.InjectRepository)(database_1.Sense)),
+    __param(2, (0, typeorm_1.InjectRepository)(database_1.Example)),
+    __param(3, (0, typeorm_1.InjectRepository)(database_1.LemmaContribution)),
+    __param(4, (0, typeorm_1.InjectRepository)(database_1.LemmaRevision)),
     __param(5, (0, common_2.Inject)(cache_manager_1.CACHE_MANAGER)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,

@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { DataSource } from 'typeorm';
-import { User } from '../../src/users/entities/user.entity';
+import { User } from '@kamusi/database';
 import { E2ETestSetup } from '../builders/e2e-test-setup';
 
 export interface TestAuth {

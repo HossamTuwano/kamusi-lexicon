@@ -11,11 +11,7 @@ import {
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { CANONICAL_LANGUAGE, PartOfSpeech } from '@kamusi/core';
 import { DictionaryEntriesService } from '../../src/dictionary-entries/dictionary-entries.service';
-import { Lemma } from '../../src/dictionary-entries/entities/lemma.entity';
-import { Sense } from '../../src/dictionary-entries/entities/sense.entity';
-import { Example } from '../../src/dictionary-entries/entities/example.entity';
-import { LemmaContribution } from '../../src/dictionary-entries/entities/lemma-contribution.entity';
-import { LemmaRevision } from '../../src/dictionary-entries/entities/lemma-revision.entity';
+import { Example, Lemma, LemmaContribution, LemmaRevision, Sense } from '@kamusi/database';
 import { createMockCache, createMockRepository } from '../helpers/mock-repositories';
 import { validCreateDto } from '../helpers/phase1-fixtures';
 
@@ -330,6 +326,20 @@ describe('DictionaryEntriesService — Phase 1', () => {
 
       const qb = lemmaRepo.createQueryBuilder.mock.results[0].value;
       expect(qb.andWhere).toHaveBeenCalledWith('lemma.is_hidden = false');
+      expect(qb.andWhere).toHaveBeenCalledWith('lemma.language = :lang', {
+        lang: CANONICAL_LANGUAGE,
+      });
+      expect(mockCache.set).toHaveBeenCalled();
+    });
+
+    it('queries Swahili lemmas including hidden when cache miss (moderation search)', async () => {
+      mockCache.get.mockResolvedValueOnce(null);
+
+      await service.searchModeration({ q: 'gari', page: 1, limit: 10 });
+
+      const qb = lemmaRepo.createQueryBuilder.mock.results[0].value;
+
+      expect(qb.andWhere).not.toHaveBeenCalledWith('lemma.is_hidden = false');
       expect(qb.andWhere).toHaveBeenCalledWith('lemma.language = :lang', {
         lang: CANONICAL_LANGUAGE,
       });

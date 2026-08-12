@@ -34,10 +34,10 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.seedUsers = seedUsers;
-const user_entity_1 = require("../../users/entities/user.entity");
+const database_1 = require("@kamusi/database");
 const bcrypt = __importStar(require("bcrypt"));
 async function seedUsers(dataSource) {
-    const userRepo = dataSource.getRepository(user_entity_1.User);
+    const userRepo = dataSource.getRepository(database_1.User);
     console.log('Seeding admin user...');
     const adminPassword = 'admin123'; // Default credentials
     const adminHashedPassword = await bcrypt.hash(adminPassword, 10);

@@ -1,38 +1,65 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authenticatedFetch } from '../lib/api'
-import { Lemma } from '@kamusi/core'
 
-// Domain-shaped query keys
 export const lemmaKeys = {
   all: ['lemmas'] as const,
   lists: () => [...lemmaKeys.all, 'list'] as const,
   list: (filter: string) => [...lemmaKeys.lists(), { filter }] as const,
-  detail: (id: string) => [...lemmaKeys.all, 'detail', id] as const,
+  pending: (q: string) => [...lemmaKeys.lists(), 'pending', q] as const,
+  hidden: (q: string) => [...lemmaKeys.lists(), 'hidden', q] as const,
+  detail: (id: string | number) => [...lemmaKeys.all, 'detail', String(id)] as const,
 }
 
-// Colocated Query Functions
 export const lemmaApi = {
-  // Fetch all entries, filter client-side for unverified (isVerified = false)
-  getPending: async (q = '') => {
-    const url = q ? `/entries/search?q=${q}` : '/entries/search?q='
-    const res = await authenticatedFetch(url)
-    // Filter to only unverified entries (moderator dashboard shows pending)
-    return Array.isArray(res) ? res.filter((e: any) => !e.isVerified) : []
+  search: async (q = '') => {
+    const url = q ? `/entries/search?q=${encodeURIComponent(q)}` : '/entries/search?q='
+    return authenticatedFetch(url)
   },
+
+  getPending: async (q = '') => {
+    const res = await lemmaApi.search(q)
+    return Array.isArray(res) ? res.filter((e: any) => !e.isVerified && !e.isHidden) : []
+  },
+
+  getHidden: async (q = '') => {
+    // Moderator-only endpoint: includes hidden entries.
+    const url = `/entries/moderation/search?q=${encodeURIComponent(q)}`
+    const res = await authenticatedFetch(url)
+    return Array.isArray(res) ? res.filter((e: any) => e.isHidden) : []
+  },
+
+  getEntry: async (id: string | number) => {
+    return authenticatedFetch(`/entries/${id}`)
+  },
+
   moderate: async ({ id, action }: { id: number | string, action: 'verify' | 'hide' | 'restore' }) => {
     return authenticatedFetch(`/entries/${id}/moderate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action }),
     })
-  }
+  },
 }
 
-// Hooks for Domain Logic
 export function usePendingLemmas(q = '') {
   return useQuery({
-    queryKey: lemmaKeys.list(q),
+    queryKey: lemmaKeys.pending(q),
     queryFn: () => lemmaApi.getPending(q),
+  })
+}
+
+export function useHiddenLemmas(q = '') {
+  return useQuery({
+    queryKey: lemmaKeys.hidden(q),
+    queryFn: () => lemmaApi.getHidden(q),
+  })
+}
+
+export function useEntryDetail(id: string | number) {
+  return useQuery({
+    queryKey: lemmaKeys.detail(id),
+    queryFn: () => lemmaApi.getEntry(id),
+    enabled: !!id,
   })
 }
 
@@ -43,6 +70,7 @@ export function useModerateLemma() {
     mutationFn: lemmaApi.moderate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: lemmaKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: lemmaKeys.all })
     },
   })
 }

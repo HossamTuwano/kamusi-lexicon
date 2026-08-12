@@ -5,6 +5,51 @@ Append newest entries at the top. Prefer evidence over persuasion.
 
 ---
 
+## 2026-08-12 — Moderator search wired into admin dashboard (hidden entries)
+
+**Context:** The API already exposed `GET /entries/moderation/search` (includes hidden entries, moderator-only), but the admin UI was not using it. `getHidden()` in `lemmas.ts` was a stub that called the public search (which filters `is_hidden=false`) and therefore always returned `[]`. Hidden entries could not be listed or restored from the dashboard.
+
+**Changes:**
+1. `apps/admin/src/lib/lemmas.ts` — `getHidden()` now calls `GET /entries/moderation/search` (JWT attached via `authenticatedFetch`) and filters to `isHidden` only.
+2. `apps/admin/src/pages/DashboardPage.tsx` — added Pending/Hidden tabs. Hidden tab uses `useHiddenLemmas`; hidden entries render with a red badge and a **Restore** action. Refactored the entry card into a shared `EntryCard`/`LemmaGrid` so both tabs reuse the same markup. Mutation invalidation (`lemmaKeys.lists()`) refreshes both tabs after verify/hide/restore.
+
+**Verification:**
+- Admin `tsc --noEmit` passes; `vite build` succeeds
+- API `tsc --noEmit` passes; all 30 unit tests pass
+
+**Next:** bulk moderation actions; user/role management in admin UI; e2e coverage for the moderation search endpoint.
+
+---
+
+## 2026-08-12 — Entity consolidation + Admin UI expansion
+
+**Context:** Two remaining Phase 1 checklist items: entities duplicated between `apps/api` and `packages/database`, and admin UI was minimal (single dashboard page).
+
+**Entity consolidation (`@kamusi/database`):**
+1. Fixed `packages/database/src/entities/vote.entity.ts` — broken relative imports pointed at non-existent API paths; corrected to sibling entity imports.
+2. Fixed `packages/database/src/entities/index.ts` — exported `Vote` (non-existent class) instead of `VerificationVote`.
+3. Updated `packages/database/tsconfig.json` — added `experimentalDecorators`, `emitDecoratorMetadata`, `strictPropertyInitialization: false` so TypeORM entity decorators compile.
+4. Rebuilt `@kamusi/database` — now exports all 7 entity classes (`User`, `Lemma`, `Sense`, `Example`, `LemmaContribution`, `LemmaRevision`, `VerificationVote`).
+5. Refactored `apps/api` — all modules, services, seeds, test helpers, and factories now import entities from `@kamusi/database` instead of local duplicates.
+6. Deleted 7 duplicated entity files from `apps/api/src/**/entities/`.
+
+**Admin UI expansion:**
+1. **Entry detail page** (`/entries/:id`) — shows full lemma metadata, all senses with examples, contribution history table, expandable revision snapshots, and moderator actions (verify/hide/restore).
+2. **Dashboard search** — debounced search input filters pending entries by word.
+3. **Entry cards link to detail** — clicking a card navigates to the full detail view.
+4. **Restore action** — available on the entry detail page for hidden entries (moderator-only).
+5. **Removed duplicate `QueryClientProvider`** — `App.tsx` no longer creates its own; `main.tsx` already provides one.
+
+**Verification:**
+- All 29 unit tests pass
+- API builds cleanly (`tsc` + `nest build`)
+- Admin app: `tsc --noEmit` passes, `vite build` succeeds
+- Pre-existing vite type version mismatch in `tsc -b` (not introduced by these changes)
+
+**Known limitation:** The search API (`GET /entries/search`) filters `is_hidden=false`, so the admin dashboard currently cannot list hidden entries for restore. A moderator-only search flag or separate endpoint is needed to surface hidden entries in the dashboard.
+
+---
+
 ## 2026-08-12 — Admin UI moderation dashboard implemented
 
 **Context:** Phase 1 API was fully functional (all 17 e2e tests passing), but Admin UI dashboard wasn't wired to the moderation endpoints. Task: complete the dashboard to enable moderators to review and verify/hide entries.

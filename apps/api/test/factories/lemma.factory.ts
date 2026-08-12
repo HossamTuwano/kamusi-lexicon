@@ -1,8 +1,6 @@
 import { DataSource } from 'typeorm';
 import { PartOfSpeech } from '@kamusi/core';
-import { Lemma } from '../../src/dictionary-entries/entities/lemma.entity';
-import { Sense } from '../../src/dictionary-entries/entities/sense.entity';
-import { Example } from '../../src/dictionary-entries/entities/example.entity';
+import { Example, Lemma, Sense } from '@kamusi/database';
 
 export class LemmaFactory {
   constructor(private dataSource: DataSource) {}

@@ -28,6 +28,13 @@ let DictionaryEntriesController = class DictionaryEntriesController {
         }
         return this.entriesService.search(dto);
     }
+    async moderationSearch(dto, req) {
+        const role = req.user?.role;
+        if (role !== 'moderator' && role !== 'admin') {
+            throw new common_1.ForbiddenException('Moderator role required');
+        }
+        return this.entriesService.searchModeration(dto);
+    }
     async findOne(id) {
         return this.entriesService.findOne(+id);
     }
@@ -53,6 +60,19 @@ __decorate([
     __metadata("design:paramtypes", [entry_dto_1.SearchDto]),
     __metadata("design:returntype", Promise)
 ], DictionaryEntriesController.prototype, "search", null);
+__decorate([
+    (0, swagger_1.ApiOperation)({
+        summary: 'Moderator search includes hidden entries (Phase 1 moderation)',
+    }),
+    (0, swagger_1.ApiBearerAuth)(),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Get)('moderation/search'),
+    __param(0, (0, common_1.Query)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [entry_dto_1.SearchDto, Object]),
+    __metadata("design:returntype", Promise)
+], DictionaryEntriesController.prototype, "moderationSearch", null);
 __decorate([
     (0, swagger_1.ApiOperation)({ summary: 'Fetch single lemma with senses, examples, history' }),
     (0, common_1.Get)(':id'),

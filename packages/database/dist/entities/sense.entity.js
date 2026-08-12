@@ -9,33 +9,38 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Example = void 0;
+exports.Sense = void 0;
 const typeorm_1 = require("typeorm");
-const sense_entity_1 = require("./sense.entity");
-let Example = class Example {
+const lemma_entity_1 = require("./lemma.entity");
+const example_entity_1 = require("./example.entity");
+let Sense = class Sense {
 };
-exports.Example = Example;
+exports.Sense = Sense;
 __decorate([
     (0, typeorm_1.PrimaryGeneratedColumn)(),
     __metadata("design:type", Number)
-], Example.prototype, "id", void 0);
+], Sense.prototype, "id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text' }),
     __metadata("design:type", String)
-], Example.prototype, "sentence", void 0);
+], Sense.prototype, "definition", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'text', nullable: true }),
-    __metadata("design:type", String)
-], Example.prototype, "note", void 0);
+    __metadata("design:type", Object)
+], Sense.prototype, "usage_note", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => sense_entity_1.Sense, (sense) => sense.examples, { onDelete: 'CASCADE' }),
-    (0, typeorm_1.JoinColumn)({ name: 'sense_id' }),
-    __metadata("design:type", sense_entity_1.Sense)
-], Example.prototype, "sense", void 0);
+    (0, typeorm_1.ManyToOne)(() => lemma_entity_1.Lemma, (lemma) => lemma.senses, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'lemma_id' }),
+    __metadata("design:type", lemma_entity_1.Lemma)
+], Sense.prototype, "lemma", void 0);
 __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", Number)
-], Example.prototype, "sense_id", void 0);
-exports.Example = Example = __decorate([
-    (0, typeorm_1.Entity)('examples')
-], Example);
+], Sense.prototype, "lemma_id", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => example_entity_1.Example, (example) => example.sense, { cascade: true }),
+    __metadata("design:type", Array)
+], Sense.prototype, "examples", void 0);
+exports.Sense = Sense = __decorate([
+    (0, typeorm_1.Entity)('senses')
+], Sense);

@@ -1,9 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { VerificationVote } from './entities/vote.entity';
-import { Lemma } from '../dictionary-entries/entities/lemma.entity';
-import { User } from '../users/entities/user.entity';
+import { Lemma, User, VerificationVote } from '@kamusi/database';
 import { UsersService } from '../users/users.service';
 import { ForbiddenException, ConflictException } from '@nestjs/common';
 

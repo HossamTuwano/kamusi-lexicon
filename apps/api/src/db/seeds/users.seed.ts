@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+import { User } from '@kamusi/database';
 import * as bcrypt from 'bcrypt';
 
 export async function seedUsers(dataSource: DataSource) {

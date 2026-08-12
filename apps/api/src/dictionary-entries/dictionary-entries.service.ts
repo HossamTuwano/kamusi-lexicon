@@ -8,11 +8,13 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CANONICAL_LANGUAGE, UserRole } from '@kamusi/core';
-import { Lemma } from './entities/lemma.entity';
-import { Sense } from './entities/sense.entity';
-import { Example } from './entities/example.entity';
-import { LemmaContribution } from './entities/lemma-contribution.entity';
-import { LemmaRevision } from './entities/lemma-revision.entity';
+import {
+  Example,
+  Lemma,
+  LemmaContribution,
+  LemmaRevision,
+  Sense,
+} from '@kamusi/database';
 import { CreateEntryDto, SearchDto, UpdateEntryDto } from './dto/entry.dto';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
@@ -61,6 +63,42 @@ export class DictionaryEntriesService {
     }
 
     query.andWhere('lemma.is_hidden = false');
+    query.andWhere('lemma.language = :lang', { lang: CANONICAL_LANGUAGE });
+    query.skip(offset).take(limit);
+
+    const results = await query.getMany();
+    await this.cacheManager.set(cacheKey, results, 3600);
+
+    return results;
+  }
+
+  /**
+   * Moderator search includes hidden entries.
+   * Public search intentionally hides them to keep Phase 1 UI safe.
+   */
+  async searchModeration(dto: SearchDto) {
+    const { q, page = 1, limit = 20 } = dto;
+    const offset = (page - 1) * limit;
+
+    const normQ = q?.trim().toLowerCase() || '';
+
+    const cacheKey = `moderation_search:${normQ}:${page}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) return cached;
+
+    const query = this.lemmaRepo
+      .createQueryBuilder('lemma')
+      .leftJoinAndSelect('lemma.senses', 'sense')
+      .leftJoinAndSelect('sense.examples', 'example');
+
+    if (normQ) {
+      query.andWhere('lemma.word % :q', { q: normQ });
+      query
+        .addSelect('similarity(lemma.word, :q)', 'search_rank')
+        .orderBy('search_rank', 'DESC');
+    }
+
+    // Unlike public search, do NOT force is_hidden=false.
     query.andWhere('lemma.language = :lang', { lang: CANONICAL_LANGUAGE });
     query.skip(offset).take(limit);
 

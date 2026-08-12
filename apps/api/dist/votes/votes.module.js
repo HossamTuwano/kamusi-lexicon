@@ -9,7 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.VotesModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
-const vote_entity_1 = require("./entities/vote.entity");
+const database_1 = require("@kamusi/database");
 const votes_service_1 = require("./votes.service");
 const votes_controller_1 = require("./votes.controller");
 const dictionary_entries_module_1 = require("../dictionary-entries/dictionary-entries.module");
@@ -20,7 +20,7 @@ exports.VotesModule = VotesModule;
 exports.VotesModule = VotesModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            typeorm_1.TypeOrmModule.forFeature([vote_entity_1.VerificationVote]),
+            typeorm_1.TypeOrmModule.forFeature([database_1.VerificationVote]),
             dictionary_entries_module_1.DictionaryEntriesModule,
             users_module_1.UsersModule,
         ],

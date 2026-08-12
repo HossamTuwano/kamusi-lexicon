@@ -1,10 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Lemma } from './entities/lemma.entity';
-import { Sense } from './entities/sense.entity';
-import { Example } from './entities/example.entity';
-import { LemmaContribution } from './entities/lemma-contribution.entity';
-import { LemmaRevision } from './entities/lemma-revision.entity';
+import { Example, Lemma, LemmaContribution, LemmaRevision, Sense } from '@kamusi/database';
 import { DictionaryEntriesService } from './dictionary-entries.service';
 import { DictionaryEntriesController } from './dictionary-entries.controller';
 

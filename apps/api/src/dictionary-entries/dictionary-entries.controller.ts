@@ -9,6 +9,7 @@ import {
   Param,
   Delete,
   Query,
+  ForbiddenException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -31,6 +32,21 @@ export class DictionaryEntriesController {
       return [];
     }
     return this.entriesService.search(dto);
+  }
+
+  @ApiOperation({
+    summary: 'Moderator search includes hidden entries (Phase 1 moderation)',
+  })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Get('moderation/search')
+  async moderationSearch(@Query() dto: SearchDto, @Request() req: any) {
+    const role = req.user?.role;
+    if (role !== 'moderator' && role !== 'admin') {
+      throw new ForbiddenException('Moderator role required');
+    }
+
+    return this.entriesService.searchModeration(dto);
   }
 
   @ApiOperation({ summary: 'Fetch single lemma with senses, examples, history' })

@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
-import { Lemma } from '../../dictionary-entries/entities/lemma.entity';
+import { User } from './user.entity';
+import { Lemma } from './lemma.entity';
 
 @Entity('verification_votes')
 @Unique(['entry_id', 'user_id'])

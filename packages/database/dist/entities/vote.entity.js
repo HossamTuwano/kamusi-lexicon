@@ -9,41 +9,44 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.LemmaContribution = void 0;
+exports.VerificationVote = void 0;
 const typeorm_1 = require("typeorm");
+const user_entity_1 = require("./user.entity");
 const lemma_entity_1 = require("./lemma.entity");
-let LemmaContribution = class LemmaContribution {
+let VerificationVote = class VerificationVote {
 };
-exports.LemmaContribution = LemmaContribution;
+exports.VerificationVote = VerificationVote;
 __decorate([
     (0, typeorm_1.PrimaryGeneratedColumn)(),
     __metadata("design:type", Number)
-], LemmaContribution.prototype, "id", void 0);
+], VerificationVote.prototype, "id", void 0);
 __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", Number)
-], LemmaContribution.prototype, "lemma_id", void 0);
+], VerificationVote.prototype, "entry_id", void 0);
 __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", Number)
-], LemmaContribution.prototype, "user_id", void 0);
+], VerificationVote.prototype, "user_id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar' }),
-    __metadata("design:type", String)
-], LemmaContribution.prototype, "action", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
-    __metadata("design:type", String)
-], LemmaContribution.prototype, "note", void 0);
+    (0, typeorm_1.Column)({ type: 'int' }),
+    __metadata("design:type", Number)
+], VerificationVote.prototype, "vote_type", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
-], LemmaContribution.prototype, "created_at", void 0);
+], VerificationVote.prototype, "created_at", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => lemma_entity_1.Lemma, (lemma) => lemma.contributions, { onDelete: 'CASCADE' }),
-    (0, typeorm_1.JoinColumn)({ name: 'lemma_id' }),
+    (0, typeorm_1.ManyToOne)(() => lemma_entity_1.Lemma, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'entry_id' }),
     __metadata("design:type", lemma_entity_1.Lemma)
-], LemmaContribution.prototype, "lemma", void 0);
-exports.LemmaContribution = LemmaContribution = __decorate([
-    (0, typeorm_1.Entity)('lemma_contributions')
-], LemmaContribution);
+], VerificationVote.prototype, "entry", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { onDelete: 'CASCADE' }),
+    (0, typeorm_1.JoinColumn)({ name: 'user_id' }),
+    __metadata("design:type", user_entity_1.User)
+], VerificationVote.prototype, "user", void 0);
+exports.VerificationVote = VerificationVote = __decorate([
+    (0, typeorm_1.Entity)('verification_votes'),
+    (0, typeorm_1.Unique)(['entry_id', 'user_id'])
+], VerificationVote);

@@ -62,8 +62,8 @@ Use this as the compliance gate:
 - [x] Vote routes covered by Phase 1 e2e
 - [x] TypeORM migration exists; `synchronize` gated by `DB_SYNC` (not blind prod sync)
 - [x] `apps/web` Phase 1 consumer (search / read / auth / contribute / vote)
-- [ ] `apps/admin` implemented (placeholder)
-- [ ] Entities fully relocated into `@kamusi/database` (migration lives in API for now)
+- [x] `apps/admin` implemented (login, pending dashboard, entry detail, search, verify/hide/restore)
+- [x] Entities fully relocated into `@kamusi/database` (API imports from shared package)
 
 ---
 
@@ -87,7 +87,8 @@ Wire format: **camelCase** (`partOfSpeech`, `isVerified`, `accessToken`, …).
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
-| GET | `/api/entries/search?q=` | no | Fuzzy Swahili lemma search (`pg_trgm`) |
+| GET | `/api/entries/search?q=` | no | Fuzzy Swahili lemma search (`pg_trgm`); hidden excluded |
+| GET | `/api/entries/moderation/search?q=` | JWT (moderator/admin) | Includes hidden entries; used by admin dashboard |
 | GET | `/api/entries/:id` | no | Lemma + senses + examples + contributions + revisions |
 | POST | `/api/entries` | JWT | Create Swahili lemma (≥1 sense) |
 | PATCH | `/api/entries/:id` | JWT | Owner or moderator; bumps version + revision |
@@ -157,4 +158,4 @@ UPDATE users SET role = 'moderator' WHERE username = 'you';
 
 ## If you only fix one thing next
 
-Finish `apps/admin` moderation UI, then relocate TypeORM entities into `@kamusi/database`.
+Bulk moderation actions in the admin dashboard (select multiple entries → verify/hide/restore in one request), then user/role management (promote/demote contributors to moderator from the admin UI). Also consider e2e coverage for `GET /entries/moderation/search` and a `reported`/flagging state if moderation volume grows.
