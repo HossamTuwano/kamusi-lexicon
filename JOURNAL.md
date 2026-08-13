@@ -3,6 +3,16 @@
 Decision log for continuity across sessions and models.
 Append newest entries at the top. Prefer evidence over persuasion.
 
+## 2026-08-13 — Pivot: Phase 2 paused; Phase 1 becomes the MVP
+
+**Decision:** Pause Phase 2 work. The next milestone is shipping Phase 1 as an MVP for friends to test and stress-test. A readiness survey (docker-compose, envs, security) found the app is functionally complete but not production-ready: no HTTPS, rate limiting, security headers, health endpoint, structured logging, backups, CI/CD, or monitoring; `DB_SYNC=true` and dev secrets are the defaults; only the API is Dockerized (web/admin are static Vite builds); `/docs` Swagger is exposed.
+
+**Deliverable:** `MVP-RELEASE-PLAN.md` — functional QA matrix (F1–F13 by role), edge-case and security checklists, k6 load-test scenarios with targets (50→100 concurrent, p95 ≤ 300 ms reads), P0/P1 hardening backlog, managed-platform-first hosting recommendation (Render/Railway) with VPS (Caddy) as the scale path, CI/CD, backups + restore drill, launch go/no-go checklist, friends-testing program, rollback, and post-launch criteria that close the pilot.
+
+**Scope note:** plan document only — no hardening code was written. Owner answers (hosting not decided — plan advises; domain will be bought later — plan uses provider subdomain first). Next: review the plan, then execute the P0/P1 backlog.
+
+---
+
 ## 2026-08-13 — Phase 2 planning: sense-anchored translation schema
 
 **Decision:** Phase 2 (Sw ↔ En/De/Es) will attach translations to the existing Swahili **sense**, not to a new concept table. Single additive relation table `translations(sense_id, language, word, …)`; lemmas/senses/examples untouched; translation rows are metadata of a Swahili sense (constitution-compliant, satisfies invariant 1). Reverse lookup is an index scan on `(language, lower(word))`. A WordNet-style concept anchor was considered and rejected for Phase 2 (symmetric-pair needs do not exist yet; later migration stays additive).

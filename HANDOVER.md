@@ -81,6 +81,7 @@ kamusi-lexicon/
   HANDOVER.md        ← this file
   PROJECT_MAP.md     ← high-level map
   PHASE2-PLAN.md     ← translation-ready schema plan (draft, planning only)
+  MVP-RELEASE-PLAN.md ← Phase 1 MVP testing + production plan (plan only)
 ```
 
 ### API surface (Phase 1)
@@ -166,7 +167,7 @@ UPDATE users SET role = 'moderator' WHERE username = 'you';
 
 ## If you only fix one thing next
 
-Review `PHASE2-PLAN.md` (sense-anchored translation schema) and confirm the open decision points — anchor, first languages, moderation parity, POS handling, revision table. The e2e promote/demote coverage previously flagged here is already in place (`apps/api/test/e2e/phase1-dictionary.e2e.spec.ts`, "user role management" block). Phase 2 implementation is not started; no Phase 1 work is outstanding.
+Phase 2 is paused. The current milestone is the Phase 1 MVP release. Review `MVP-RELEASE-PLAN.md` and start executing the P0/P1 hardening backlog (rate limiting, secrets, `DB_SYNC=false` + migrations in prod, backups, health endpoint, helmet, CI). The e2e promote/demote coverage previously flagged here is already in place (`apps/api/test/e2e/phase1-dictionary.e2e.spec.ts`, "user role management" block).
 
 ## Moderation state machine (Phase 1)
 
