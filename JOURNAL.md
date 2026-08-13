@@ -5,6 +5,26 @@ Append newest entries at the top. Prefer evidence over persuasion.
 
 ---
 
+## 2026-08-13 — Community reporting / flagging state
+
+**Context:** HANDOVER's next item was a `reported`/flagging state for spam or low-quality entries. Moderation was reactive only (moderators had to stumble across bad entries); there was no way for contributors to surface problems.
+
+**Decisions / changes:**
+
+1. **Report model** — new `lemma_reports` table (`@kamusi/database` entity `LemmaReport`): `(lemma_id, user_id)` unique, `reason` ∈ `spam|offensive|wrong|duplicate|other`, optional `note`, `status` ∈ `open|resolved`. Denormalized `lemmas.report_count` (matches the existing `vote_count` pattern). `POST /entries/:id/report` (JWT): any authenticated contributor except the entry's creator; duplicate report from the same user → 409. Records a `reported` contribution action (new `ContributionAction`).
+2. **Reports do not auto-hide.** A reported entry stays public until a moderator acts — prevents report-abuse from knocking verified content off the dictionary. Human moderation decides.
+3. **Resolution is a moderator decision** — `verify | hide | restore` in `applyModeration()` now also resolves all open reports for the entry and resets `report_count` to 0. Reuses the existing single + bulk moderation paths, so `POST /entries/moderate/bulk` clears reports too.
+4. **Moderator-only reports view** — `GET /entries/:id/reports` (moderator/admin, newest first). Public `GET /entries/:id` does **not** leak reports; `reportCount` is exposed on moderation search so the admin Reported tab can list flagged entries.
+5. **Admin UI** — new "Reported" tab on the dashboard (amber count badge on cards, select-all + bulk Verify/Hide which resolve reports); entry detail page shows a Reports section (reason/note/reporter/status) for moderators.
+6. **Cache** — report creation and any moderation action now `cacheManager.clear()`, so the Reported tab and public search never serve stale report/visibility state (previously moderation caches could go stale for up to 1h).
+
+**Migration:** `apps/api/src/db/migrations/1754500000000-report-flagging.ts` + `packages/database/sql/002_report_flagging.sql` for shared envs; local/e2e rely on `DB_SYNC=true`.
+
+**Test coverage:** +6 unit (report create/self-report/duplicate/not-found, moderation resolves reports on verify + hide), +6 e2e (flag + queue surface, self-report 403, duplicate 409, unauthenticated 401, moderator-only reports list, verify resolves reports). 47/47 unit, 34/34 e2e; API `tsc` clean; admin `tsc --noEmit` clean + `vite build` succeeds.
+
+**Next:** e2e coverage for the moderator promote/demote UI flow (API + guards covered); then Phase 2 planning only (no Phase 1 work).
+
+
 ## 2026-08-13 — Bulk moderation + user/role management (admin dashboard + API)
 
 **Context:** HANDOVER's next items were bulk moderation actions and user/role management. Moderation was per-entry only (`POST /entries/:id/moderate`), so moderators had to click through cards for large queues. User roles could only be changed via direct DB updates (`UPDATE users SET role=...`).

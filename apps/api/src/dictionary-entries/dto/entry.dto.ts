@@ -11,12 +11,13 @@ import {
   IsInt,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { PartOfSpeech } from '@kamusi/core';
+import { PartOfSpeech, ReportReason } from '@kamusi/core';
 
 export const MODERATION_ACTIONS = ['verify', 'hide', 'restore'] as const;
 export type ModerationAction = (typeof MODERATION_ACTIONS)[number];
 
 const PARTS_OF_SPEECH = Object.values(PartOfSpeech);
+const REPORT_REASONS = Object.values(ReportReason);
 
 class ExampleDto {
   @ApiProperty({ description: 'Swahili example sentence' })
@@ -181,4 +182,15 @@ export class BulkModerateDto {
   @ApiProperty({ enum: MODERATION_ACTIONS })
   @IsIn(MODERATION_ACTIONS)
   action: ModerationAction;
+}
+
+export class ReportDto {
+  @ApiProperty({ enum: REPORT_REASONS })
+  @IsIn(REPORT_REASONS)
+  reason: ReportReason;
+
+  @ApiPropertyOptional({ description: 'Optional detail about the problem' })
+  @IsString()
+  @IsOptional()
+  note?: string;
 }

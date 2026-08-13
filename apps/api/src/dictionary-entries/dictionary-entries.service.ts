@@ -12,12 +12,14 @@ import {
   Example,
   Lemma,
   LemmaContribution,
+  LemmaReport,
   LemmaRevision,
   Sense,
 } from '@kamusi/database';
 import {
   CreateEntryDto,
   ModerationAction,
+  ReportDto,
   SearchDto,
   UpdateEntryDto,
 } from './dto/entry.dto';
@@ -42,6 +44,8 @@ export class DictionaryEntriesService {
     private contributionRepo: Repository<LemmaContribution>,
     @InjectRepository(LemmaRevision)
     private revisionRepo: Repository<LemmaRevision>,
+    @InjectRepository(LemmaReport)
+    private reportRepo: Repository<LemmaReport>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
@@ -280,6 +284,63 @@ export class DictionaryEntriesService {
     return { action, total: ids.length, applied, results };
   }
 
+  /**
+   * Flag an entry as problematic. Any authenticated contributor may report,
+   * except the entry's own creator. One open report per user per entry.
+   */
+  async report(
+    id: number,
+    userId: number,
+    dto: ReportDto,
+  ): Promise<LemmaReport> {
+    const lemma = await this.lemmaRepo.findOne({ where: { id } });
+    if (!lemma) throw new NotFoundException();
+
+    if (lemma.creator_id === userId) {
+      throw new ForbiddenException('You cannot report your own entry');
+    }
+
+    const existing = await this.reportRepo.findOne({
+      where: { lemma_id: id, user_id: userId },
+    });
+    if (existing) {
+      throw new ConflictException('You have already reported this entry');
+    }
+
+    const report = this.reportRepo.create({
+      lemma_id: id,
+      user_id: userId,
+      reason: dto.reason,
+      note: dto.note?.trim() || null,
+      status: 'open',
+    });
+    const saved = await this.reportRepo.save(report);
+
+    await this.lemmaRepo.increment({ id }, 'report_count', 1);
+    await this.recordContribution(id, userId, 'reported', dto.reason);
+    await this.cacheManager.clear();
+    return saved;
+  }
+
+  /** Moderator view: all reports for an entry (open first, newest first). */
+  async findReports(id: number): Promise<LemmaReport[]> {
+    const lemma = await this.lemmaRepo.findOne({ where: { id } });
+    if (!lemma) throw new NotFoundException();
+
+    return this.reportRepo.find({
+      where: { lemma_id: id },
+      order: { status: 'ASC', created_at: 'DESC' },
+    });
+  }
+
+  private async resolveReportsFor(lemmaId: number): Promise<void> {
+    await this.reportRepo.update(
+      { lemma_id: lemmaId, status: 'open' },
+      { status: 'resolved' },
+    );
+    await this.lemmaRepo.update({ id: lemmaId }, { report_count: 0 });
+  }
+
   private async applyModeration(
     lemma: Lemma,
     action: ModerationAction,
@@ -301,6 +362,10 @@ export class DictionaryEntriesService {
     } else {
       throw new BadRequestException('Unknown moderation action');
     }
+
+    // A moderator decision on the entry resolves any open reports.
+    await this.resolveReportsFor(lemma.id);
+    await this.cacheManager.clear();
 
     return lemma;
   }

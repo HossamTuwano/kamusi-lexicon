@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import {
   usePendingLemmas,
   useHiddenLemmas,
+  useReportedLemmas,
   useModerateLemma,
   useBulkModerateLemma,
 } from '../lib/lemmas'
@@ -57,6 +58,11 @@ function EntryCard({
             {isHidden && (
               <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded-md uppercase">
                 Hidden
+              </span>
+            )}
+            {(entry.reportCount ?? 0) > 0 && (
+              <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-md uppercase">
+                {entry.reportCount} report{entry.reportCount === 1 ? '' : 's'}
               </span>
             )}
             <span className="px-2 py-1 text-xs font-medium bg-slate-100 text-slate-600 rounded-md uppercase">
@@ -190,7 +196,7 @@ function LemmaGrid({
 
 export default function DashboardPage() {
   const { logout, role } = useAuth()
-  const [tab, setTab] = useState<'pending' | 'hidden'>('pending')
+  const [tab, setTab] = useState<'pending' | 'hidden' | 'reported'>('pending')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
@@ -293,6 +299,16 @@ export default function DashboardPage() {
           >
             Hidden
           </button>
+          <button
+            onClick={() => setTab('reported')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+              tab === 'reported'
+                ? 'bg-amber-600 text-white'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            Reported
+          </button>
         </div>
 
         {/* Search */}
@@ -352,7 +368,9 @@ export default function DashboardPage() {
 
         {tab === 'pending'
           ? <PendingPanel q={debouncedSearch} isMod={isMod} selectedIds={selectedIds} onToggleSelect={toggleSelect} onSelectAll={selectAll} />
-          : <HiddenPanel q={debouncedSearch} isMod={isMod} selectedIds={selectedIds} onToggleSelect={toggleSelect} onSelectAll={selectAll} />}
+          : tab === 'reported'
+            ? <ReportedPanel q={debouncedSearch} isMod={isMod} selectedIds={selectedIds} onToggleSelect={toggleSelect} onSelectAll={selectAll} />
+            : <HiddenPanel q={debouncedSearch} isMod={isMod} selectedIds={selectedIds} onToggleSelect={toggleSelect} onSelectAll={selectAll} />}
       </main>
     </div>
   )
@@ -429,5 +447,47 @@ function HiddenPanel({
       onToggleSelect={onToggleSelect}
       onSelectAll={onSelectAll}
     />
+  )
+}
+
+function ReportedPanel({
+  q,
+  isMod,
+  selectedIds,
+  onToggleSelect,
+  onSelectAll,
+}: {
+  q: string
+  isMod: boolean
+  selectedIds: Set<number>
+  onToggleSelect: (id: number) => void
+  onSelectAll: (ids: number[], selectAll: boolean) => void
+}) {
+  const { data: entries, isLoading, isError, error } = useReportedLemmas(q)
+
+  if (isError) {
+    return (
+      <div className="bg-red-50 border-l-4 border-red-500 p-4 text-red-700">
+        Error loading reported entries: {error?.message}
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <p className="text-sm text-slate-500 mb-4">
+        Entries flagged by the community. Verifying or hiding an entry clears its reports.
+      </p>
+      <LemmaGrid
+        entries={entries}
+        isLoading={isLoading}
+        isMod={isMod}
+        query={q}
+        emptyText="No reported entries. Clean community!"
+        selectedIds={selectedIds}
+        onToggleSelect={onToggleSelect}
+        onSelectAll={onSelectAll}
+      />
+    </div>
   )
 }

@@ -64,6 +64,7 @@ Use this as the compliance gate:
 - [x] `apps/web` Phase 1 consumer (search / read / auth / contribute / vote)
 - [x] `apps/admin` implemented (login, pending dashboard, entry detail, search, verify/hide/restore)
 - [x] Entities fully relocated into `@kamusi/database` (API imports from shared package)
+- [x] Community reporting / flagging state (`lemma_reports`, Reported tab, reports resolved on moderator action)
 
 ---
 
@@ -97,6 +98,8 @@ Wire format: **camelCase** (`partOfSpeech`, `isVerified`, `accessToken`, …).
 | POST | `/api/entries/moderate/bulk` | JWT | Moderator/admin: bulk `verify` \| `hide` \| `restore` on `{ ids: number[], action }`; returns per-id results |
 | POST | `/api/entries/:id/vote` | JWT | Community verification votes |
 | DELETE | `/api/entries/:id/vote` | JWT | Retract vote |
+| POST | `/api/entries/:id/report` | JWT | Flag entry: `{ reason: 'spam'\|'offensive'\|'wrong'\|'duplicate'\|'other', note? }`; creator + duplicate (per user) forbidden |
+| GET | `/api/entries/:id/reports` | JWT (moderator/admin) | Reports for an entry (open first, newest first) |
 | POST | `/api/auth/register` | no | Creates `contributor` |
 | POST | `/api/auth/login` | no | JWT includes `role` |
 | GET | `/api/users` | JWT (admin) | List all users (password hashes stripped) |
@@ -161,4 +164,16 @@ UPDATE users SET role = 'moderator' WHERE username = 'you';
 
 ## If you only fix one thing next
 
-A `reported`/flagging state for spam or low-quality entries if moderation volume grows. Also consider e2e coverage for a moderator promoting/demoting via the UI flow (API + guards are covered). Then revisit translation-ready schema shape (Phase 2 planning only, no Phase 1 work).
+Add e2e coverage for a moderator promoting/demoting via the UI flow (API + guards are covered). Then revisit translation-ready schema shape (Phase 2 planning only, no Phase 1 work).
+
+## Moderation state machine (Phase 1)
+
+```
+new entry ─────────────────────────────► pending (is_verified=false, is_hidden=false)
+pending ──verify──► verified ──hide──► hidden ──restore──► verified
+pending ──hide────► hidden
+any ──report by contributor──► reported (report_count>0; still public until a moderator acts)
+reported ──verify/hide/restore──► reports resolved (report_count=0)
+```
+
+Any moderator action (`verify | hide | restore`) on an entry with open reports resolves all of them. Reports never auto-hide content — human moderation decides.

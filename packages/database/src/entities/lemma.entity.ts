@@ -10,6 +10,7 @@ import { PartOfSpeech, CANONICAL_LANGUAGE } from '@kamusi/core';
 import { Sense } from './sense.entity';
 import { LemmaContribution } from './lemma-contribution.entity';
 import { LemmaRevision } from './lemma-revision.entity';
+import { LemmaReport } from './lemma-report.entity';
 
 export { PartOfSpeech };
 
@@ -62,6 +63,10 @@ export class Lemma {
   @Column({ default: 0 })
   vote_count: number;
 
+  /** Number of open (unresolved) reports; 0 when no active flags. */
+  @Column({ default: 0 })
+  report_count: number;
+
   @Column({ default: false })
   is_hidden: boolean;
 
@@ -83,4 +88,7 @@ export class Lemma {
 
   @OneToMany(() => LemmaRevision, (r) => r.lemma)
   revisions: LemmaRevision[];
+
+  @OneToMany(() => LemmaReport, (r) => r.lemma)
+  reports: LemmaReport[];
 }

@@ -23,6 +23,7 @@ export const PHASE1_TABLES = [
   'verification_votes',
   'lemma_contributions',
   'lemma_revisions',
+  'lemma_reports',
 ] as const;
 
 export const UNIQUE_LEMMA_KEY = ['word', 'part_of_speech'] as const;

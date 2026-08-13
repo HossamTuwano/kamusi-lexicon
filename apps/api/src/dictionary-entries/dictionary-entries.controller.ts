@@ -20,6 +20,7 @@ import { DictionaryEntriesService } from './dictionary-entries.service';
 import {
   BulkModerateDto,
   CreateEntryDto,
+  ReportDto,
   SearchDto,
   UpdateEntryDto,
 } from './dto/entry.dto';
@@ -113,5 +114,31 @@ export class DictionaryEntriesController {
       req.user.userId,
       req.user.role,
     );
+  }
+
+  @ApiOperation({
+    summary: 'Report an entry (spam, offensive, wrong, duplicate, other)',
+  })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/report')
+  async report(
+    @Param('id') id: string,
+    @Body() dto: ReportDto,
+    @Request() req: any,
+  ) {
+    return this.entriesService.report(+id, req.user.userId, dto);
+  }
+
+  @ApiOperation({ summary: 'List reports for an entry (moderator/admin only)' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/reports')
+  async reports(@Param('id') id: string, @Request() req: any) {
+    const role = req.user?.role;
+    if (role !== 'moderator' && role !== 'admin') {
+      throw new ForbiddenException('Moderator role required');
+    }
+    return this.entriesService.findReports(+id);
   }
 }

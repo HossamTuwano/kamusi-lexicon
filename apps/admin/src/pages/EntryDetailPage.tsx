@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useEntryDetail, useModerateLemma } from '../lib/lemmas'
+import { useEntryDetail, useEntryReports, useModerateLemma } from '../lib/lemmas'
 import { useAuth } from '../lib/auth-context'
 
 function formatDate(d: string | Date | undefined) {
@@ -29,10 +29,10 @@ export default function EntryDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { role } = useAuth()
-  const { data: entry, isLoading, isError, error } = useEntryDetail(id!)
-  const { mutate: moderate, isPending: isModerating } = useModerateLemma()
-
   const isMod = role === 'moderator' || role === 'admin'
+  const { data: entry, isLoading, isError, error } = useEntryDetail(id!)
+  const { data: reports } = useEntryReports(id!, isMod)
+  const { mutate: moderate, isPending: isModerating } = useModerateLemma()
 
   if (isLoading) {
     return (
@@ -76,6 +76,11 @@ export default function EntryDetailPage() {
               <div className="flex items-center gap-2 mt-2">
                 <Badge>{entry.partOfSpeech}</Badge>
                 {statusBadge}
+                {(entry.reportCount ?? 0) > 0 && (
+                  <Badge color="amber">
+                    {entry.reportCount} open report{entry.reportCount === 1 ? '' : 's'}
+                  </Badge>
+                )}
                 <Badge color="blue">v{entry.version}</Badge>
               </div>
             </div>
@@ -187,6 +192,33 @@ export default function EntryDetailPage() {
                 ))}
               </tbody>
             </table>
+          </section>
+        )}
+
+        {/* Reports */}
+        {isMod && (reports?.length ?? 0) > 0 && (
+          <section className="bg-white rounded-xl shadow-sm border border-amber-200 p-6">
+            <h2 className="text-lg font-bold text-slate-800 mb-4">
+              Reports ({reports.length})
+            </h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Community flags. Verifying or hiding this entry clears all reports.
+            </p>
+            <ul className="space-y-3">
+              {reports.map((r: any) => (
+                <li key={r.id} className="border border-slate-100 rounded-lg px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <Badge color={r.status === 'open' ? 'amber' : 'slate'}>
+                      {r.reason}
+                    </Badge>
+                    <span className="text-xs text-slate-400">
+                      by #{r.userId} &middot; {formatDate(r.createdAt)} &middot; {r.status}
+                    </span>
+                  </div>
+                  {r.note && <p className="text-sm text-slate-600 mt-2">{r.note}</p>}
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 

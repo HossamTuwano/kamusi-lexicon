@@ -11,7 +11,7 @@ import {
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { CANONICAL_LANGUAGE, PartOfSpeech } from '@kamusi/core';
 import { DictionaryEntriesService } from '../../src/dictionary-entries/dictionary-entries.service';
-import { Example, Lemma, LemmaContribution, LemmaRevision, Sense } from '@kamusi/database';
+import { Example, Lemma, LemmaContribution, LemmaReport, LemmaRevision, Sense } from '@kamusi/database';
 import { createMockCache, createMockRepository } from '../helpers/mock-repositories';
 import { validCreateDto } from '../helpers/phase1-fixtures';
 
@@ -21,6 +21,7 @@ describe('DictionaryEntriesService — Phase 1', () => {
   let senseRepo: ReturnType<typeof createMockRepository>;
   let contributionRepo: ReturnType<typeof createMockRepository>;
   let revisionRepo: ReturnType<typeof createMockRepository>;
+  let reportRepo: ReturnType<typeof createMockRepository>;
   let mockCache: ReturnType<typeof createMockCache>;
 
   beforeEach(async () => {
@@ -28,6 +29,7 @@ describe('DictionaryEntriesService — Phase 1', () => {
     senseRepo = createMockRepository();
     contributionRepo = createMockRepository();
     revisionRepo = createMockRepository();
+    reportRepo = createMockRepository();
     mockCache = createMockCache();
 
     const module: TestingModule = await Test.createTestingModule({
@@ -38,6 +40,7 @@ describe('DictionaryEntriesService — Phase 1', () => {
         { provide: getRepositoryToken(Example), useValue: createMockRepository() },
         { provide: getRepositoryToken(LemmaContribution), useValue: contributionRepo },
         { provide: getRepositoryToken(LemmaRevision), useValue: revisionRepo },
+        { provide: getRepositoryToken(LemmaReport), useValue: reportRepo },
         { provide: CACHE_MANAGER, useValue: mockCache },
       ],
     }).compile();
@@ -360,6 +363,95 @@ describe('DictionaryEntriesService — Phase 1', () => {
       await expect(
         service.bulkModerate([], 'verify', 5, 'moderator'),
       ).rejects.toThrow('At least one entry id is required');
+    });
+  });
+
+  describe('report', () => {
+    const existingLemma = { id: 1, creator_id: 10, is_verified: true, is_hidden: false };
+
+    it('creates a report, increments report_count, and records contribution', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({ ...existingLemma });
+      reportRepo.findOne.mockResolvedValueOnce(null);
+
+      const result = await service.report(1, 42, { reason: 'spam', note: ' Uchafu ' });
+
+      expect(reportRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lemma_id: 1,
+          user_id: 42,
+          reason: 'spam',
+          note: 'Uchafu',
+          status: 'open',
+        }),
+      );
+      expect(lemmaRepo.increment).toHaveBeenCalledWith({ id: 1 }, 'report_count', 1);
+      expect(contributionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'reported', note: 'spam' }),
+      );
+      expect(mockCache.clear).toHaveBeenCalled();
+      expect(result.status).toBe('open');
+    });
+
+    it('forbids reporting your own entry', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({ ...existingLemma, creator_id: 42 });
+
+      await expect(
+        service.report(1, 42, { reason: 'other' }),
+      ).rejects.toThrow('You cannot report your own entry');
+    });
+
+    it('forbids duplicate report from the same user', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({ ...existingLemma });
+      reportRepo.findOne.mockResolvedValueOnce({ id: 7, status: 'open' });
+
+      await expect(
+        service.report(1, 42, { reason: 'spam' }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('throws NotFound when lemma does not exist', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce(null);
+
+      await expect(
+        service.report(404, 42, { reason: 'wrong' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('report resolution on moderation', () => {
+    it('verifying a reported entry resolves open reports and resets the count', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({
+        id: 1,
+        is_verified: false,
+        is_hidden: false,
+        report_count: 2,
+      });
+
+      await service.moderate(1, 'verify', 5, 'moderator');
+
+      expect(reportRepo.update).toHaveBeenCalledWith(
+        { lemma_id: 1, status: 'open' },
+        { status: 'resolved' },
+      );
+      expect(lemmaRepo.update).toHaveBeenCalledWith(
+        { id: 1 },
+        { report_count: 0 },
+      );
+    });
+
+    it('hiding a reported entry also resolves reports', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({
+        id: 1,
+        is_hidden: false,
+        report_count: 1,
+      });
+
+      await service.moderate(1, 'hide', 5, 'moderator');
+
+      expect(reportRepo.update).toHaveBeenCalledWith(
+        { lemma_id: 1, status: 'open' },
+        { status: 'resolved' },
+      );
     });
   });
 

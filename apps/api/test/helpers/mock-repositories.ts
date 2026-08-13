@@ -12,8 +12,10 @@ export function createMockRepository() {
       return Promise.resolve({ ...entity, id: entity.id ?? 1 });
     }),
     findOne: vi.fn(),
+    find: vi.fn().mockResolvedValue([]),
     count: vi.fn(),
-    increment: vi.fn(),
+    increment: vi.fn().mockResolvedValue(undefined),
+    update: vi.fn().mockResolvedValue({ affected: 1 }),
     delete: vi.fn().mockResolvedValue(undefined),
     remove: vi.fn(),
     createQueryBuilder: vi.fn(() => ({
@@ -32,5 +34,6 @@ export function createMockCache() {
   return {
     get: vi.fn().mockResolvedValue(null),
     set: vi.fn().mockResolvedValue(undefined),
+    clear: vi.fn().mockResolvedValue(undefined),
   };
 }

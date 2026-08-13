@@ -41,7 +41,34 @@ export type ContributionAction =
   | 'verified'
   | 'hidden'
   | 'restored'
-  | 'deleted';
+  | 'deleted'
+  | 'reported';
+
+/**
+ * Why a user flagged an entry. Stable codes for software; UI may localize.
+ */
+export const ReportReason = {
+  SPAM: 'spam',
+  OFFENSIVE: 'offensive',
+  WRONG: 'wrong',
+  DUPLICATE: 'duplicate',
+  OTHER: 'other',
+} as const;
+
+export type ReportReason = (typeof ReportReason)[keyof typeof ReportReason];
+
+export type ReportStatus = 'open' | 'resolved';
+
+/** A user-reported problem on a lemma. Open reports feed the moderation queue. */
+export interface LemmaReport {
+  id?: string | number;
+  lemmaId: string | number;
+  userId: string | number;
+  reason: ReportReason;
+  note?: string;
+  status: ReportStatus;
+  createdAt?: Date;
+}
 
 export interface Example {
   id?: string | number;
@@ -72,6 +99,9 @@ export interface Lemma {
   source?: string;
 
   isVerified: boolean;
+  isHidden?: boolean;
+  reportCount?: number;
+  isReported?: boolean;
   version: number;
   createdAt?: Date;
 }

@@ -7,7 +7,9 @@ export const lemmaKeys = {
   list: (filter: string) => [...lemmaKeys.lists(), { filter }] as const,
   pending: (q: string) => [...lemmaKeys.lists(), 'pending', q] as const,
   hidden: (q: string) => [...lemmaKeys.lists(), 'hidden', q] as const,
+  reported: (q: string) => [...lemmaKeys.lists(), 'reported', q] as const,
   detail: (id: string | number) => [...lemmaKeys.all, 'detail', String(id)] as const,
+  reports: (id: string | number) => [...lemmaKeys.all, 'reports', String(id)] as const,
 }
 
 export const lemmaApi = {
@@ -29,6 +31,17 @@ export const lemmaApi = {
     const url = `/entries/moderation/search?q=${encodeURIComponent(q)}`
     const res = await authenticatedFetch(url)
     return Array.isArray(res) ? res.filter((e: any) => e.isHidden) : []
+  },
+
+  getReported: async (q = '') => {
+    // Moderator-only endpoint: entries with open reports.
+    const url = `/entries/moderation/search?q=${encodeURIComponent(q)}`
+    const res = await authenticatedFetch(url)
+    return Array.isArray(res) ? res.filter((e: any) => (e.reportCount ?? 0) > 0) : []
+  },
+
+  getEntryReports: async (id: string | number) => {
+    return authenticatedFetch(`/entries/${id}/reports`)
   },
 
   getEntry: async (id: string | number) => {
@@ -63,6 +76,21 @@ export function useHiddenLemmas(q = '') {
   return useQuery({
     queryKey: lemmaKeys.hidden(q),
     queryFn: () => lemmaApi.getHidden(q),
+  })
+}
+
+export function useReportedLemmas(q = '') {
+  return useQuery({
+    queryKey: lemmaKeys.reported(q),
+    queryFn: () => lemmaApi.getReported(q),
+  })
+}
+
+export function useEntryReports(id: string | number, enabled = true) {
+  return useQuery({
+    queryKey: lemmaKeys.reports(id),
+    queryFn: () => lemmaApi.getEntryReports(id),
+    enabled: !!id && enabled,
   })
 }
 

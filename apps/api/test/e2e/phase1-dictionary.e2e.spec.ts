@@ -527,4 +527,154 @@ describe.skipIf(!runE2E)('Phase 1 — Dictionary E2E', () => {
         .expect(403);
     });
   });
+
+  describe('reports (flagging)', () => {
+    it('flags an entry and surfaces it in the moderation queue', async () => {
+      const owner = await registerContributor(setup.serverHttp, 'rep_owner');
+      const reporter = await registerContributor(setup.serverHttp, 'rep_reporter');
+
+      const created = await setup.serverHttp
+        .post('/api/entries')
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send(validCreateDto({ word: 'taharifa' }))
+        .expect(201);
+
+      const reported = await setup.serverHttp
+        .post(`/api/entries/${created.body.id}/report`)
+        .set('Authorization', `Bearer ${reporter.token}`)
+        .send({ reason: 'spam', note: 'Matangazo ya biashara.' })
+        .expect(201);
+
+      expect(reported.body.reason).toBe('spam');
+      expect(reported.body.status).toBe('open');
+
+      const detail = await setup.serverHttp
+        .get(`/api/entries/${created.body.id}`)
+        .expect(200);
+      expect(detail.body.reportCount).toBe(1);
+
+      const moderator = await registerModerator(setup, 'rep_mod');
+      const queue = await setup.serverHttp
+        .get('/api/entries/moderation/search')
+        .set('Authorization', `Bearer ${moderator.token}`)
+        .query({ q: 'taharifa' })
+        .expect(200);
+      expect(queue.body[0].reportCount).toBe(1);
+    });
+
+    it('forbids reporting your own entry', async () => {
+      const owner = await registerContributor(setup.serverHttp, 'rep_self');
+      const created = await setup.serverHttp
+        .post('/api/entries')
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send(validCreateDto({ word: 'binafsi2' }))
+        .expect(201);
+
+      await setup.serverHttp
+        .post(`/api/entries/${created.body.id}/report`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ reason: 'other' })
+        .expect(403);
+    });
+
+    it('forbids duplicate report from the same user', async () => {
+      const owner = await registerContributor(setup.serverHttp, 'rep_dup_owner');
+      const reporter = await registerContributor(setup.serverHttp, 'rep_dup_reporter');
+
+      const created = await setup.serverHttp
+        .post('/api/entries')
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send(validCreateDto({ word: 'rudia' }))
+        .expect(201);
+
+      await setup.serverHttp
+        .post(`/api/entries/${created.body.id}/report`)
+        .set('Authorization', `Bearer ${reporter.token}`)
+        .send({ reason: 'wrong' })
+        .expect(201);
+
+      await setup.serverHttp
+        .post(`/api/entries/${created.body.id}/report`)
+        .set('Authorization', `Bearer ${reporter.token}`)
+        .send({ reason: 'wrong' })
+        .expect(409);
+    });
+
+    it('requires authentication to report', async () => {
+      const lemma = await lemmaFactory.create({ word: 'jina' });
+      await setup.serverHttp
+        .post(`/api/entries/${lemma.id}/report`)
+        .send({ reason: 'spam' })
+        .expect(401);
+    });
+
+    it('lists reports for moderators only', async () => {
+      const owner = await registerContributor(setup.serverHttp, 'rep_list_owner');
+      const reporter = await registerContributor(setup.serverHttp, 'rep_list_reporter');
+      const contributor = await registerContributor(setup.serverHttp, 'rep_list_c');
+      const moderator = await registerModerator(setup, 'rep_list_mod');
+
+      const created = await setup.serverHttp
+        .post('/api/entries')
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send(validCreateDto({ word: 'orodha' }))
+        .expect(201);
+
+      await setup.serverHttp
+        .post(`/api/entries/${created.body.id}/report`)
+        .set('Authorization', `Bearer ${reporter.token}`)
+        .send({ reason: 'duplicate', note: 'Tayari ipo.' })
+        .expect(201);
+
+      await setup.serverHttp
+        .get(`/api/entries/${created.body.id}/reports`)
+        .set('Authorization', `Bearer ${contributor.token}`)
+        .expect(403);
+
+      const reports = await setup.serverHttp
+        .get(`/api/entries/${created.body.id}/reports`)
+        .set('Authorization', `Bearer ${moderator.token}`)
+        .expect(200);
+
+      expect(reports.body).toHaveLength(1);
+      expect(reports.body[0].reason).toBe('duplicate');
+      expect(reports.body[0].note).toBe('Tayari ipo.');
+    });
+
+    it('moderator verification resolves open reports', async () => {
+      const owner = await registerContributor(setup.serverHttp, 'rep_res_owner');
+      const reporter = await registerContributor(setup.serverHttp, 'rep_res_reporter');
+      const moderator = await registerModerator(setup, 'rep_res_mod');
+
+      const created = await setup.serverHttp
+        .post('/api/entries')
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send(validCreateDto({ word: 'suluhisha' }))
+        .expect(201);
+
+      await setup.serverHttp
+        .post(`/api/entries/${created.body.id}/report`)
+        .set('Authorization', `Bearer ${reporter.token}`)
+        .send({ reason: 'spam' })
+        .expect(201);
+
+      await setup.serverHttp
+        .post(`/api/entries/${created.body.id}/moderate`)
+        .set('Authorization', `Bearer ${moderator.token}`)
+        .send({ action: 'verify' })
+        .expect(201);
+
+      const detail = await setup.serverHttp
+        .get(`/api/entries/${created.body.id}`)
+        .expect(200);
+      expect(detail.body.isVerified).toBe(true);
+      expect(detail.body.reportCount).toBe(0);
+
+      const reports = await setup.serverHttp
+        .get(`/api/entries/${created.body.id}/reports`)
+        .set('Authorization', `Bearer ${moderator.token}`)
+        .expect(200);
+      expect(reports.body[0].status).toBe('resolved');
+    });
+  });
 });
