@@ -33,8 +33,8 @@ describe.skipIf(!runE2E)('Phase 1 — Dictionary E2E', () => {
   });
 
   describe('public read', () => {
-    it('searches Swahili lemmas with full Lemma → Sense → Example hierarchy', async () => {
-      await lemmaFactory.create({ word: 'meza' });
+    it('searches verified Swahili lemmas with full Lemma → Sense → Example hierarchy', async () => {
+      await lemmaFactory.create({ word: 'meza', is_verified: true });
 
       const response = await setup.serverHttp
         .get('/api/entries/search')
@@ -59,8 +59,19 @@ describe.skipIf(!runE2E)('Phase 1 — Dictionary E2E', () => {
       expect(response.body).toEqual([]);
     });
 
-    it('excludes hidden lemmas from search', async () => {
-      await lemmaFactory.create({ word: 'fichwa', is_hidden: true });
+    it('excludes unverified lemmas from public search (visibility gate)', async () => {
+      await lemmaFactory.create({ word: 'subiri', is_verified: false, is_hidden: false });
+
+      const response = await setup.serverHttp
+        .get('/api/entries/search')
+        .query({ q: 'subiri' })
+        .expect(200);
+
+      expect(response.body).toEqual([]);
+    });
+
+    it('excludes hidden lemmas from search even when verified', async () => {
+      await lemmaFactory.create({ word: 'fichwa', is_verified: true, is_hidden: true });
 
       const response = await setup.serverHttp
         .get('/api/entries/search')
@@ -80,6 +91,42 @@ describe.skipIf(!runE2E)('Phase 1 — Dictionary E2E', () => {
       expect(response.body.word).toBe('kitabu');
       expect(response.body.senses).toBeDefined();
       expect(response.body.isVerified).toBe(false);
+    });
+  });
+
+  describe('moderation search', () => {
+    it('includes pending and hidden entries for moderators', async () => {
+      const moderator = await registerModerator(setup, 'mod_search');
+      await lemmaFactory.create({ word: 'umbo', is_verified: false, is_hidden: false });
+      await lemmaFactory.create({ word: 'siri', is_verified: true, is_hidden: true });
+
+      const pending = await setup.serverHttp
+        .get('/api/entries/moderation/search')
+        .set('Authorization', `Bearer ${moderator.token}`)
+        .query({ q: 'umbo' })
+        .expect(200);
+
+      expect(pending.body).toHaveLength(1);
+      expect(pending.body[0].word).toBe('umbo');
+
+      const hidden = await setup.serverHttp
+        .get('/api/entries/moderation/search')
+        .set('Authorization', `Bearer ${moderator.token}`)
+        .query({ q: 'siri' })
+        .expect(200);
+
+      expect(hidden.body).toHaveLength(1);
+      expect(hidden.body[0].word).toBe('siri');
+    });
+
+    it('forbids contributors from moderation search', async () => {
+      const contributor = await registerContributor(setup.serverHttp, 'notmod');
+
+      await setup.serverHttp
+        .get('/api/entries/moderation/search')
+        .set('Authorization', `Bearer ${contributor.token}`)
+        .query({ q: 'x' })
+        .expect(403);
     });
   });
 

@@ -5,6 +5,21 @@ Append newest entries at the top. Prefer evidence over persuasion.
 
 ---
 
+## 2026-08-12 — Public visibility gate: only verified entries are public
+
+**Context:** New entries were created `is_verified=false, is_hidden=false`, and public search filtered only `is_hidden`. That meant every contribution was public before any moderation — contradicting the "Pending Review" workflow and the Constitution's human-verification principle. `hide` was the only reactive tool; `verify` had no publication effect.
+
+**Decision:** Public search (`GET /entries/search`) now requires `is_verified = true` **and** `is_hidden = false`. The moderator search (`GET /entries/moderation/search`) returns pending, hidden, and verified entries for moderators/admins only. This makes:
+- `verify` → the publication gate (pending entries are private until a moderator verifies)
+- `hide` → removal of previously verified/public content (spam, errors), with `restore` to bring it back
+- the admin Pending/Hidden tabs the only surface for unverified/hidden content
+
+`GET /entries/:id` intentionally stays open (shared by public detail, admin detail, and internal service logic).
+
+**Test coverage added (e2e):** unverified lemma excluded from public search; hidden-but-verified lemma excluded; moderation search includes pending + hidden; contributors get 403 on moderation search. 20/20 e2e pass; 30/30 unit tests pass. Verified against the containerized API (create → hidden from public → verify → public).
+
+---
+
 ## 2026-08-12 — Dockerized API fixed (monorepo install + module resolution)
 
 **Context:** `docker compose up` failed at runtime with `PackageLoader: The "class-validator" package is missing`. Root cause was three layered issues in the API image:

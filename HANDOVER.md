@@ -87,7 +87,7 @@ Wire format: **camelCase** (`partOfSpeech`, `isVerified`, `accessToken`, …).
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
-| GET | `/api/entries/search?q=` | no | Fuzzy Swahili lemma search (`pg_trgm`); hidden excluded |
+| GET | `/api/entries/search?q=` | no | Verified Swahili lemmas only (`is_verified=true`, `is_hidden=false`) |
 | GET | `/api/entries/moderation/search?q=` | JWT (moderator/admin) | Includes hidden entries; used by admin dashboard |
 | GET | `/api/entries/:id` | no | Lemma + senses + examples + contributions + revisions |
 | POST | `/api/entries` | JWT | Create Swahili lemma (≥1 sense) |

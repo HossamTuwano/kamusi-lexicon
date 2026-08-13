@@ -63,6 +63,7 @@ export class DictionaryEntriesService {
     }
 
     query.andWhere('lemma.is_hidden = false');
+    query.andWhere('lemma.is_verified = true');
     query.andWhere('lemma.language = :lang', { lang: CANONICAL_LANGUAGE });
     query.skip(offset).take(limit);
 
