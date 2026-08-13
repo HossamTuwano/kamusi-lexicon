@@ -137,8 +137,9 @@ npm run web:dev              # from repo root → http://localhost:5173
 ```bash
 # In apps/api/.env:
 # DB_SYNC=false
-# Apply packages/database/sql/001_phase1_bootstrap.sql
-# (or run TypeORM CLI against src/db/migrations/1754490000000-phase1-init.ts)
+# Apply packages/database/sql/001_phase1_bootstrap.sql then 002_report_flagging.sql
+# (or run TypeORM CLI against src/db/migrations/1754490000000-phase1-init.ts
+#  followed by 1754500000000-report-flagging.ts)
 ```
 
 ### Tests (Vitest)

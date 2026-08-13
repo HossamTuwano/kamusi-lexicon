@@ -365,6 +365,7 @@ export class DictionaryEntriesService {
 
     // A moderator decision on the entry resolves any open reports.
     await this.resolveReportsFor(lemma.id);
+    lemma.report_count = 0;
     await this.cacheManager.clear();
 
     return lemma;

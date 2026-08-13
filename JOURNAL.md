@@ -5,6 +5,16 @@ Append newest entries at the top. Prefer evidence over persuasion.
 
 ---
 
+## 2026-08-13 — Dockerized API rebuilt with flagging + stale reportCount fix
+
+**Context:** The running `api` image predated the reporting feature. Rebuilt it (`docker compose build api`) and smoke-tested the full flag flow against the container (register → create → report → duplicate 409 → self-report 403 → unauthenticated 401 → admin verify → reports resolved).
+
+**Fix found during verification:** the `moderate`/`bulkModerate` HTTP response returned a stale `reportCount` — `applyModeration` saves the lemma (still `report_count=1` in memory) before `resolveReportsFor` zeroes it in the DB. The DB was correct (detail endpoint + psql confirmed `0`); only the returned entity was stale. Fix: set `lemma.report_count = 0` after resolution. Added a unit assertion for it. The containerized API now boots with both new routes and the running stack includes flagging.
+
+**Next:** Phase 2 planning only (no Phase 1 work).
+
+---
+
 ## 2026-08-13 — Report button in public web + web production build fix
 
 **Context:** The flagging feature was API + admin-only; contributors could only report via raw API calls. Also discovered `apps/web`'s production build (`vite build`) was broken — pre-existing, not introduced by recent work.

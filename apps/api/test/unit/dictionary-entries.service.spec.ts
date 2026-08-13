@@ -427,7 +427,7 @@ describe('DictionaryEntriesService — Phase 1', () => {
         report_count: 2,
       });
 
-      await service.moderate(1, 'verify', 5, 'moderator');
+      const result = await service.moderate(1, 'verify', 5, 'moderator');
 
       expect(reportRepo.update).toHaveBeenCalledWith(
         { lemma_id: 1, status: 'open' },
@@ -437,6 +437,7 @@ describe('DictionaryEntriesService — Phase 1', () => {
         { id: 1 },
         { report_count: 0 },
       );
+      expect(result.report_count).toBe(0);
     });
 
     it('hiding a reported entry also resolves reports', async () => {
