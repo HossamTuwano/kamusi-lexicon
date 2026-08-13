@@ -5,6 +5,20 @@ Append newest entries at the top. Prefer evidence over persuasion.
 
 ---
 
+## 2026-08-13 — Report button in public web + web production build fix
+
+**Context:** The flagging feature was API + admin-only; contributors could only report via raw API calls. Also discovered `apps/web`'s production build (`vite build`) was broken — pre-existing, not introduced by recent work.
+
+**Changes:**
+1. **`apps/web` Report button** — `EntryPage.tsx` shows "Ripoti tatizo" for logged-in users: inline form with reason dropdown (`spam|offensive|wrong|duplicate|other`, Swahili labels) + optional note, "Tuma ripoti"/"Ghairi". Posts to `POST /entries/:id/report`; success hides the form ("Asante! Ripoti imepokelewa kwa wasimamizi."), errors (e.g. 409 already-reported) surface the API message. `api.report()` added in `apps/web/src/lib/api.ts`.
+2. **Web build fix** — `vite build` failed with `"PartOfSpeech" is not exported by @kamusi/core`. Root cause: `@kamusi/core` is a symlinked workspace package resolving to a path outside real `node_modules`, so rollup's CJS handling (default include `/node_modules/`) skipped it and parsed the CJS `dist/index.js` as ESM. Fix: `apps/web/vite.config.ts` `build.commonjsOptions.include` adds `/packages\/(core|database)\//`. The admin app was unaffected because it never imports `@kamusi/core`.
+
+**Verification:** API 47/47 unit, `tsc` clean; admin `tsc` clean + `vite build` ok; web `tsc` clean + `vite build` ok (first time the web production build has been verified green).
+
+**Next:** rebuild the Docker API image so the running stack includes the flagging feature; then Phase 2 planning only (no Phase 1 work).
+
+---
+
 ## 2026-08-13 — Community reporting / flagging state
 
 **Context:** HANDOVER's next item was a `reported`/flagging state for spam or low-quality entries. Moderation was reactive only (moderators had to stumble across bad entries); there was no way for contributors to surface problems.

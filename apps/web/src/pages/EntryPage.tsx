@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { api, type ApiLemma } from '../lib/api';
+import { api, type ApiLemma, type ReportReason } from '../lib/api';
 import { useAuth } from '../lib/auth';
+
+const REPORT_REASONS: Array<{ value: ReportReason; label: string }> = [
+  { value: 'spam', label: 'Uchafu / matangazo' },
+  { value: 'offensive', label: 'Matusi' },
+  { value: 'wrong', label: 'Maana si sahihi' },
+  { value: 'duplicate', label: 'Nakala / inarudiwa' },
+  { value: 'other', label: 'Nyingine' },
+];
 
 export function EntryPage() {
   const { id } = useParams();
@@ -9,6 +17,11 @@ export function EntryPage() {
   const [lemma, setLemma] = useState<ApiLemma | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [voteMsg, setVoteMsg] = useState<string | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState<ReportReason>('other');
+  const [reportNote, setReportNote] = useState('');
+  const [reportMsg, setReportMsg] = useState<string | null>(null);
+  const [reportSent, setReportSent] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -27,6 +40,22 @@ export function EntryPage() {
       setVoteMsg('Kura imehifadhiwa.');
     } catch (err) {
       setVoteMsg(err instanceof Error ? err.message : 'Hitilafu ya kura');
+    }
+  }
+
+  async function submitReport() {
+    if (!lemma || !token) return;
+    setReportMsg(null);
+    try {
+      await api.report(
+        lemma.id,
+        { reason: reportReason, note: reportNote.trim() || undefined },
+        token,
+      );
+      setReportSent(true);
+      setReportMsg('Asante! Ripoti imepokelewa kwa wasimamizi.');
+    } catch (err) {
+      setReportMsg(err instanceof Error ? err.message : 'Hitilafu ya ripoti');
     }
   }
 
@@ -97,6 +126,56 @@ export function EntryPage() {
             </button>
           </div>
           {voteMsg && <p className="muted">{voteMsg}</p>}
+        </section>
+      )}
+
+      {user && token && (
+        <section className="stack" style={{ marginTop: '1.5rem' }}>
+          {!reportOpen && !reportSent && (
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() => setReportOpen(true)}
+            >
+              Ripoti tatizo
+            </button>
+          )}
+
+          {reportOpen && !reportSent && (
+            <div className="stack">
+              <p className="muted">Ni nini kimekosea?</p>
+              <select
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value as ReportReason)}
+              >
+                {REPORT_REASONS.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+              <textarea
+                rows={2}
+                placeholder="Maelezo (si lazima)…"
+                value={reportNote}
+                onChange={(e) => setReportNote(e.target.value)}
+              />
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="button" className="btn" onClick={submitReport}>
+                  Tuma ripoti
+                </button>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => setReportOpen(false)}
+                >
+                  Ghairi
+                </button>
+              </div>
+            </div>
+          )}
+
+          {reportMsg && <p className="muted">{reportMsg}</p>}
         </section>
       )}
     </article>

@@ -2,6 +2,13 @@ import { PartOfSpeech, type CreateLemmaInput, type UserRole } from '@kamusi/core
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
+export type ReportReason =
+  | 'spam'
+  | 'offensive'
+  | 'wrong'
+  | 'duplicate'
+  | 'other';
+
 export type AuthUser = {
   id: number;
   username: string;
@@ -121,6 +128,17 @@ export const api = {
     return request<{ voteCount: number; isVerified: boolean }>(
       `/entries/${id}/vote`,
       { method: 'POST', body: JSON.stringify({ vote }) },
+      token,
+    );
+  },
+  report(
+    id: number,
+    payload: { reason: ReportReason; note?: string },
+    token: string,
+  ) {
+    return request<{ id: number; reason: ReportReason; status: string }>(
+      `/entries/${id}/report`,
+      { method: 'POST', body: JSON.stringify(payload) },
       token,
     );
   },
