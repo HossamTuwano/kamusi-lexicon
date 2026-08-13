@@ -6,11 +6,17 @@ export default defineConfig({
   server: {
     port: 5173,
   },
+  optimizeDeps: {
+    // @kamusi/core is a linked workspace package; Vite skips pre-bundling
+    // linked deps by default, so its CJS dist is served raw and named
+    // exports (e.g. PartOfSpeech) fail in the browser. Force esbuild
+    // pre-bundling so CJS -> ESM interop works in the dev server too.
+    include: ['@kamusi/core', '@kamusi/database'],
+  },
   build: {
     commonjsOptions: {
-      // @kamusi/core resolves to a workspace path outside real node_modules,
-      // so rollup's default /node_modules/ include skips it and mis-parses
-      // the CJS dist as ESM. Force CJS interop for the shared packages.
+      // Same problem in production: rollup's default /node_modules/ include
+      // skips the workspace path, mis-parsing the CJS dist as ESM.
       include: [/node_modules/, /packages\/(core|database)\//],
     },
   },

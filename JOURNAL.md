@@ -5,6 +5,16 @@ Append newest entries at the top. Prefer evidence over persuasion.
 
 ---
 
+## 2026-08-13 — Web dev server fix: pre-bundle linked @kamusi packages
+
+**Context:** After shipping the web report button, the browser dev flow broke with `Uncaught SyntaxError: module doesn't provide an export named: 'PartOfSpeech'` at `@fs/.../packages/core/dist/index.js`. The earlier fix (`build.commonjsOptions`) only covered `vite build`; dev was still serving `@kamusi/core`'s CJS dist raw.
+
+**Root cause:** Vite deliberately skips pre-bundling linked/workspace packages. So `@kamusi/core` (CJS `dist/index.js`) was served untouched to the browser, which cannot do CJS named-export detection.
+
+**Fix:** `apps/web/vite.config.ts` adds `optimizeDeps.include: ['@kamusi/core', '@kamusi/database']`, forcing esbuild pre-bundling (CJS→ESM interop) in dev. Verified: the running dev server re-optimized and `ContributePage.tsx` now transforms to `import ... from "/node_modules/.vite/deps/@kamusi_core.js"; const PartOfSpeech = __vite__cjsImport5__kamusi_core["PartOfSpeech"];`. Production build still green. Admin unaffected (type-only imports only).
+
+---
+
 ## 2026-08-13 — Dockerized API rebuilt with flagging + stale reportCount fix
 
 **Context:** The running `api` image predated the reporting feature. Rebuilt it (`docker compose build api`) and smoke-tested the full flag flow against the container (register → create → report → duplicate 409 → self-report 403 → unauthenticated 401 → admin verify → reports resolved).
