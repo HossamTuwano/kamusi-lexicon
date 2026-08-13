@@ -29,9 +29,10 @@ export default function LoginPage() {
       })
       const token = data.accessToken || data.access_token
       const userRole = data.user?.role || 'contributor'
-      
+      const userId = data.user?.id
+
       if (token) {
-        login(token, userRole)
+        login(token, userRole, userId)
         navigate('/', { replace: true })
       }
     } catch (err) {

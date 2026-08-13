@@ -48,6 +48,25 @@ export async function registerModerator(
   };
 }
 
+export async function registerAdmin(
+  setup: E2ETestSetup,
+  suffix = Date.now().toString(),
+): Promise<TestAuth> {
+  const auth = await registerContributor(setup.serverHttp, suffix);
+  const userRepo = setup.dataSource.getRepository(User);
+  await userRepo.update({ id: auth.userId }, { role: 'admin' });
+
+  const login = await setup.serverHttp
+    .post('/api/auth/login')
+    .send({ username: auth.username, password: 'password123' })
+    .expect(201);
+
+  return {
+    ...auth,
+    token: login.body.accessToken,
+  };
+}
+
 export async function isInfraAvailable(setup: E2ETestSetup): Promise<boolean> {
   try {
     await setup.withAppModule();

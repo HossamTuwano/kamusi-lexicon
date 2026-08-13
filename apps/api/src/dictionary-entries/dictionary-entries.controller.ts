@@ -17,7 +17,12 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { DictionaryEntriesService } from './dictionary-entries.service';
-import { CreateEntryDto, SearchDto, UpdateEntryDto } from './dto/entry.dto';
+import {
+  BulkModerateDto,
+  CreateEntryDto,
+  SearchDto,
+  UpdateEntryDto,
+} from './dto/entry.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
 @ApiTags('Dictionary')
@@ -93,5 +98,20 @@ export class DictionaryEntriesController {
     @Request() req: any,
   ) {
     return this.entriesService.moderate(+id, action, req.user.userId, req.user.role);
+  }
+
+  @ApiOperation({
+    summary: 'Bulk moderator action on multiple entries (verify | hide | restore)',
+  })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Post('moderate/bulk')
+  async bulkModerate(@Body() dto: BulkModerateDto, @Request() req: any) {
+    return this.entriesService.bulkModerate(
+      dto.ids,
+      dto.action,
+      req.user.userId,
+      req.user.role,
+    );
   }
 }

@@ -94,10 +94,13 @@ Wire format: **camelCase** (`partOfSpeech`, `isVerified`, `accessToken`, …).
 | PATCH | `/api/entries/:id` | JWT | Owner or moderator; bumps version + revision |
 | DELETE | `/api/entries/:id` | JWT | Owner (unverified) or moderator |
 | POST | `/api/entries/:id/moderate` | JWT | Moderator/admin: `verify` \| `hide` \| `restore` |
+| POST | `/api/entries/moderate/bulk` | JWT | Moderator/admin: bulk `verify` \| `hide` \| `restore` on `{ ids: number[], action }`; returns per-id results |
 | POST | `/api/entries/:id/vote` | JWT | Community verification votes |
 | DELETE | `/api/entries/:id/vote` | JWT | Retract vote |
 | POST | `/api/auth/register` | no | Creates `contributor` |
 | POST | `/api/auth/login` | no | JWT includes `role` |
+| GET | `/api/users` | JWT (admin) | List all users (password hashes stripped) |
+| PATCH | `/api/users/:id/role` | JWT (admin) | Promote/demote: `{ role: 'contributor'\|'moderator'\|'admin' }`; self-change and demoting the last admin are forbidden |
 
 Roles: `contributor` | `moderator` | `admin`.
 
@@ -158,4 +161,4 @@ UPDATE users SET role = 'moderator' WHERE username = 'you';
 
 ## If you only fix one thing next
 
-Bulk moderation actions in the admin dashboard (select multiple entries → verify/hide/restore in one request), then user/role management (promote/demote contributors to moderator from the admin UI). Also consider e2e coverage for `GET /entries/moderation/search` and a `reported`/flagging state if moderation volume grows.
+A `reported`/flagging state for spam or low-quality entries if moderation volume grows. Also consider e2e coverage for a moderator promoting/demoting via the UI flow (API + guards are covered). Then revisit translation-ready schema shape (Phase 2 planning only, no Phase 1 work).

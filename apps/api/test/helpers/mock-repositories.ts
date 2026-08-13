@@ -12,6 +12,8 @@ export function createMockRepository() {
       return Promise.resolve({ ...entity, id: entity.id ?? 1 });
     }),
     findOne: vi.fn(),
+    count: vi.fn(),
+    increment: vi.fn(),
     delete: vi.fn().mockResolvedValue(undefined),
     remove: vi.fn(),
     createQueryBuilder: vi.fn(() => ({

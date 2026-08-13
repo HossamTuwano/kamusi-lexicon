@@ -9,7 +9,7 @@ import {
 import { PartOfSpeech } from '@kamusi/core';
 import { E2ETestSetup } from '../builders/e2e-test-setup';
 import { LemmaFactory } from '../factories/lemma.factory';
-import { registerContributor, registerModerator } from '../helpers/auth.helper';
+import { registerContributor, registerModerator, registerAdmin } from '../helpers/auth.helper';
 import { validCreateDto } from '../helpers/phase1-fixtures';
 
 const runE2E = process.env.RUN_E2E === '1';
@@ -391,6 +391,140 @@ describe.skipIf(!runE2E)('Phase 1 — Dictionary E2E', () => {
         .set('Authorization', `Bearer ${voter.token}`)
         .send({ vote: 1 })
         .expect(409);
+    });
+  });
+
+  describe('bulk moderation', () => {
+    it('verifies multiple entries in one request and records contributions', async () => {
+      const contributor = await registerContributor(setup.serverHttp, 'bulk_c1');
+      const moderator = await registerModerator(setup, 'bulk_m1');
+
+      const a = await setup.serverHttp
+        .post('/api/entries')
+        .set('Authorization', `Bearer ${contributor.token}`)
+        .send(validCreateDto({ word: 'wingi' }))
+        .expect(201);
+      const b = await setup.serverHttp
+        .post('/api/entries')
+        .set('Authorization', `Bearer ${contributor.token}`)
+        .send(validCreateDto({ word: 'vijiji' }))
+        .expect(201);
+
+      const res = await setup.serverHttp
+        .post('/api/entries/moderate/bulk')
+        .set('Authorization', `Bearer ${moderator.token}`)
+        .send({ ids: [a.body.id, b.body.id], action: 'verify' })
+        .expect(201);
+
+      expect(res.body.applied).toBe(2);
+      expect(res.body.total).toBe(2);
+      expect(res.body.results).toEqual([
+        { id: a.body.id, status: 'ok' },
+        { id: b.body.id, status: 'ok' },
+      ]);
+
+      const detail = await setup.serverHttp
+        .get(`/api/entries/${a.body.id}`)
+        .expect(200);
+      expect(detail.body.isVerified).toBe(true);
+    });
+
+    it('reports not-found ids without failing the batch', async () => {
+      const moderator = await registerModerator(setup, 'bulk_m2');
+      const contributor = await registerContributor(setup.serverHttp, 'bulk_c2');
+
+      const a = await setup.serverHttp
+        .post('/api/entries')
+        .set('Authorization', `Bearer ${contributor.token}`)
+        .send(validCreateDto({ word: 'kipande' }))
+        .expect(201);
+
+      const res = await setup.serverHttp
+        .post('/api/entries/moderate/bulk')
+        .set('Authorization', `Bearer ${moderator.token}`)
+        .send({ ids: [999999, a.body.id], action: 'hide' })
+        .expect(201);
+
+      expect(res.body.applied).toBe(1);
+      expect(res.body.results).toEqual([
+        { id: 999999, status: 'not_found' },
+        { id: a.body.id, status: 'ok' },
+      ]);
+    });
+
+    it('forbids contributors from bulk moderation', async () => {
+      const contributor = await registerContributor(setup.serverHttp, 'bulk_c3');
+
+      await setup.serverHttp
+        .post('/api/entries/moderate/bulk')
+        .set('Authorization', `Bearer ${contributor.token}`)
+        .send({ ids: [1], action: 'verify' })
+        .expect(403);
+    });
+  });
+
+  describe('user role management', () => {
+    it('lists users for admin without exposing passwords', async () => {
+      const admin = await registerAdmin(setup, 'role_admin1');
+      await registerContributor(setup.serverHttp, 'role_u1');
+
+      const res = await setup.serverHttp
+        .get('/api/users')
+        .set('Authorization', `Bearer ${admin.token}`)
+        .expect(200);
+
+      expect(res.body.length).toBeGreaterThanOrEqual(2);
+      expect(res.body[0]).not.toHaveProperty('password_hash');
+      expect(res.body[0]).not.toHaveProperty('passwordHash');
+    });
+
+    it('promotes a contributor to moderator via PATCH role', async () => {
+      const admin = await registerAdmin(setup, 'role_admin2');
+      const target = await registerContributor(setup.serverHttp, 'role_u2');
+
+      const res = await setup.serverHttp
+        .patch(`/api/users/${target.userId}/role`)
+        .set('Authorization', `Bearer ${admin.token}`)
+        .send({ role: 'moderator' })
+        .expect(200);
+
+      expect(res.body.role).toBe('moderator');
+    });
+
+    it('forbids contributor from listing or changing roles', async () => {
+      const contributor = await registerContributor(setup.serverHttp, 'role_u3');
+      const other = await registerContributor(setup.serverHttp, 'role_u4');
+
+      await setup.serverHttp
+        .get('/api/users')
+        .set('Authorization', `Bearer ${contributor.token}`)
+        .expect(403);
+
+      await setup.serverHttp
+        .patch(`/api/users/${other.userId}/role`)
+        .set('Authorization', `Bearer ${contributor.token}`)
+        .send({ role: 'moderator' })
+        .expect(403);
+    });
+
+    it('forbids changing your own role', async () => {
+      const admin = await registerAdmin(setup, 'role_admin3');
+
+      await setup.serverHttp
+        .patch(`/api/users/${admin.userId}/role`)
+        .set('Authorization', `Bearer ${admin.token}`)
+        .send({ role: 'moderator' })
+        .expect(403);
+    });
+
+    it('blocks demoting the last admin', async () => {
+      const admin = await registerAdmin(setup, 'role_admin4');
+
+      await setup.serverHttp
+        .patch(`/api/users/${admin.userId}/role`)
+        .set('Authorization', `Bearer ${admin.token}`)
+        .send({ role: 'moderator' })
+        .expect(403);
     });
   });
 });

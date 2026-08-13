@@ -5,7 +5,8 @@ import { SecurityUtils } from './security'
 interface AuthContextType {
   token: string | null
   role: string | null
-  login: (token: string, role: string) => void
+  userId: number | null
+  login: (token: string, role: string, userId?: number | null) => void
   logout: () => void
 }
 
@@ -15,10 +16,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
   const token = SecurityUtils.getValidToken()
   const role = token ? localStorage.getItem('role') : null
+  const userId = token ? Number(localStorage.getItem('userId') || 'null') : null
 
-  const login = useCallback((token: string, role: string) => {
+  const login = useCallback((token: string, role: string, userId?: number | null) => {
     localStorage.setItem('token', token)
     localStorage.setItem('role', role)
+    if (userId) localStorage.setItem('userId', String(userId))
     SecurityUtils.recordAuthTime()
   }, [])
 
@@ -31,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [navigate])
 
   return (
-    <AuthContext.Provider value={{ token, role, login, logout }}>
+    <AuthContext.Provider value={{ token, role, userId, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

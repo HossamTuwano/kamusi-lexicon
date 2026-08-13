@@ -15,7 +15,12 @@ import {
   LemmaRevision,
   Sense,
 } from '@kamusi/database';
-import { CreateEntryDto, SearchDto, UpdateEntryDto } from './dto/entry.dto';
+import {
+  CreateEntryDto,
+  ModerationAction,
+  SearchDto,
+  UpdateEntryDto,
+} from './dto/entry.dto';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { Inject } from '@nestjs/common';
@@ -230,19 +235,69 @@ export class DictionaryEntriesService {
     const lemma = await this.lemmaRepo.findOne({ where: { id } });
     if (!lemma) throw new NotFoundException();
 
+    return this.applyModeration(lemma, action, userId);
+  }
+
+  async bulkModerate(
+    ids: number[],
+    action: ModerationAction,
+    userId: number,
+    role: UserRole,
+  ) {
+    if (!isModerator(role)) {
+      throw new ForbiddenException('Moderator role required');
+    }
+
+    if (!ids?.length) {
+      throw new BadRequestException('At least one entry id is required');
+    }
+
+    const results: Array<{
+      id: number;
+      status: 'ok' | 'not_found' | 'error';
+      error?: string;
+    }> = [];
+
+    for (const id of ids) {
+      const lemma = await this.lemmaRepo.findOne({ where: { id } });
+      if (!lemma) {
+        results.push({ id, status: 'not_found' });
+        continue;
+      }
+      try {
+        await this.applyModeration(lemma, action, userId);
+        results.push({ id, status: 'ok' });
+      } catch (err) {
+        results.push({
+          id,
+          status: 'error',
+          error: err instanceof Error ? err.message : 'unknown error',
+        });
+      }
+    }
+
+    const applied = results.filter((r) => r.status === 'ok').length;
+    return { action, total: ids.length, applied, results };
+  }
+
+  private async applyModeration(
+    lemma: Lemma,
+    action: ModerationAction,
+    userId: number,
+  ): Promise<Lemma> {
     if (action === 'verify') {
       lemma.is_verified = true;
       lemma.is_hidden = false;
       await this.lemmaRepo.save(lemma);
-      await this.recordContribution(id, userId, 'verified');
+      await this.recordContribution(lemma.id, userId, 'verified');
     } else if (action === 'hide') {
       lemma.is_hidden = true;
       await this.lemmaRepo.save(lemma);
-      await this.recordContribution(id, userId, 'hidden');
+      await this.recordContribution(lemma.id, userId, 'hidden');
     } else if (action === 'restore') {
       lemma.is_hidden = false;
       await this.lemmaRepo.save(lemma);
-      await this.recordContribution(id, userId, 'restored');
+      await this.recordContribution(lemma.id, userId, 'restored');
     } else {
       throw new BadRequestException('Unknown moderation action');
     }

@@ -5,6 +5,21 @@ Append newest entries at the top. Prefer evidence over persuasion.
 
 ---
 
+## 2026-08-13 — Bulk moderation + user/role management (admin dashboard + API)
+
+**Context:** HANDOVER's next items were bulk moderation actions and user/role management. Moderation was per-entry only (`POST /entries/:id/moderate`), so moderators had to click through cards for large queues. User roles could only be changed via direct DB updates (`UPDATE users SET role=...`).
+
+**Decisions / changes:**
+
+1. **Bulk moderation endpoint** — `POST /entries/moderate/bulk` with `{ ids: number[], action: 'verify'|'hide'|'restore' }` (JWT, moderator/admin). Service loop reuses the same `applyModeration()` path as single `moderate` so contribution history is recorded per entry (`verified`/`hidden`/`restored`). Returns `{ action, total, applied, results: [{ id, status: 'ok'|'not_found'|'error', error? }] }` — a missing id does not fail the batch.
+2. **User management API** — `GET /users` (admin only, password hashes stripped) and `PATCH /users/:id/role` with `{ role }`. Guards: actors cannot change their own role, and the last admin cannot be demoted (both enforced in `UsersService.updateRole`). Controller asserts `role === 'admin'`.
+3. **Admin dashboard** — checkboxes on entry cards, "Select all" in the grid header, and a context-aware bulk action bar (Pending → Verify/Hide selected; Hidden → Restore selected) that clears after success. Selection resets on tab switch.
+4. **Users page** (`/users`) — table of users with role badges and promote/demote actions; read-only for non-admins. Login now stores `userId` so the UI can mark the current account and prevent self-role changes client-side.
+
+**Test coverage:** +11 unit tests (bulkModerate: role guard, multi-verify + contributions, not-found partial success, empty ids; UsersService: password hashing, role update, self-change forbid, not-found, last-admin guard, admin-collision). +8 e2e (bulk verify, partial not-found, contributor 403, admin list without password, promote to moderator, contributor 403 on list/patch, self-change 403). 41/41 unit, 28/28 e2e; API `tsc` clean; admin `tsc --noEmit` clean + `vite build` succeeds.
+
+**Next:** `reported`/flagging state if moderation volume grows; then Phase 2 planning only (no Phase 1 work).
+
 ## 2026-08-12 — Public visibility gate: only verified entries are public
 
 **Context:** New entries were created `is_verified=false, is_hidden=false`, and public search filtered only `is_hidden`. That meant every contribution was public before any moderation — contradicting the "Pending Review" workflow and the Constitution's human-verification principle. `hide` was the only reactive tool; `verify` had no publication effect.

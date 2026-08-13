@@ -309,6 +309,60 @@ describe('DictionaryEntriesService — Phase 1', () => {
     });
   });
 
+  describe('bulkModerate', () => {
+    it('requires moderator role', async () => {
+      await expect(
+        service.bulkModerate([1, 2], 'verify', 1, 'contributor'),
+      ).rejects.toThrow('Moderator role required');
+    });
+
+    it('verifies multiple lemmas and records contributions', async () => {
+      lemmaRepo.findOne
+        .mockResolvedValueOnce({ id: 1, is_verified: false, is_hidden: false })
+        .mockResolvedValueOnce({ id: 2, is_verified: false, is_hidden: false });
+
+      const result = await service.bulkModerate([1, 2], 'verify', 5, 'moderator');
+
+      expect(result).toEqual({
+        action: 'verify',
+        total: 2,
+        applied: 2,
+        results: [
+          { id: 1, status: 'ok' },
+          { id: 2, status: 'ok' },
+        ],
+      });
+      expect(lemmaRepo.save).toHaveBeenCalledTimes(2);
+      expect(contributionRepo.save).toHaveBeenCalledTimes(2);
+      expect(contributionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'verified' }),
+      );
+    });
+
+    it('reports not-found ids without failing the batch', async () => {
+      lemmaRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 2, is_hidden: true });
+
+      const result = await service.bulkModerate([404, 2], 'restore', 5, 'admin');
+
+      expect(result.applied).toBe(1);
+      expect(result.results).toEqual([
+        { id: 404, status: 'not_found' },
+        { id: 2, status: 'ok' },
+      ]);
+      expect(contributionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'restored' }),
+      );
+    });
+
+    it('rejects empty ids', async () => {
+      await expect(
+        service.bulkModerate([], 'verify', 5, 'moderator'),
+      ).rejects.toThrow('At least one entry id is required');
+    });
+  });
+
   describe('search', () => {
     it('returns cached results without hitting database', async () => {
       mockCache.get.mockResolvedValueOnce([{ word: 'gari' }]);

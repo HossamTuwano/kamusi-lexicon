@@ -8,9 +8,13 @@ import {
   ValidateNested,
   ArrayUnique,
   IsIn,
+  IsInt,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PartOfSpeech } from '@kamusi/core';
+
+export const MODERATION_ACTIONS = ['verify', 'hide', 'restore'] as const;
+export type ModerationAction = (typeof MODERATION_ACTIONS)[number];
 
 const PARTS_OF_SPEECH = Object.values(PartOfSpeech);
 
@@ -165,4 +169,16 @@ export class SearchDto {
   @ApiPropertyOptional()
   @IsOptional()
   limit?: number = 20;
+}
+
+export class BulkModerateDto {
+  @ApiProperty({ description: 'Entry ids to moderate' })
+  @IsArray()
+  @ArrayMinSize(1, { message: 'At least one entry id is required' })
+  @IsInt({ each: true })
+  ids: number[];
+
+  @ApiProperty({ enum: MODERATION_ACTIONS })
+  @IsIn(MODERATION_ACTIONS)
+  action: ModerationAction;
 }

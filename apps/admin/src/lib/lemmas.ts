@@ -17,7 +17,10 @@ export const lemmaApi = {
   },
 
   getPending: async (q = '') => {
-    const res = await lemmaApi.search(q)
+    // Moderator-only endpoint returns all entries (public search short-circuits
+    // to [] on an empty query, which would hide the whole pending queue).
+    const url = `/entries/moderation/search?q=${encodeURIComponent(q)}`
+    const res = await authenticatedFetch(url)
     return Array.isArray(res) ? res.filter((e: any) => !e.isVerified && !e.isHidden) : []
   },
 
@@ -37,6 +40,14 @@ export const lemmaApi = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action }),
+    })
+  },
+
+  bulkModerate: async ({ ids, action }: { ids: (number | string)[], action: 'verify' | 'hide' | 'restore' }) => {
+    return authenticatedFetch('/entries/moderate/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: ids.map(Number), action }),
     })
   },
 }
@@ -68,6 +79,18 @@ export function useModerateLemma() {
 
   return useMutation({
     mutationFn: lemmaApi.moderate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: lemmaKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: lemmaKeys.all })
+    },
+  })
+}
+
+export function useBulkModerateLemma() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: lemmaApi.bulkModerate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: lemmaKeys.lists() })
       queryClient.invalidateQueries({ queryKey: lemmaKeys.all })
