@@ -80,6 +80,7 @@ kamusi-lexicon/
   JOURNAL.md         ← decision log
   HANDOVER.md        ← this file
   PROJECT_MAP.md     ← high-level map
+  PHASE2-PLAN.md     ← translation-ready schema plan (draft, planning only)
 ```
 
 ### API surface (Phase 1)
@@ -165,7 +166,7 @@ UPDATE users SET role = 'moderator' WHERE username = 'you';
 
 ## If you only fix one thing next
 
-Add e2e coverage for a moderator promoting/demoting via the UI flow (API + guards are covered). Then revisit translation-ready schema shape (Phase 2 planning only, no Phase 1 work).
+Review `PHASE2-PLAN.md` (sense-anchored translation schema) and confirm the open decision points — anchor, first languages, moderation parity, POS handling, revision table. The e2e promote/demote coverage previously flagged here is already in place (`apps/api/test/e2e/phase1-dictionary.e2e.spec.ts`, "user role management" block). Phase 2 implementation is not started; no Phase 1 work is outstanding.
 
 ## Moderation state machine (Phase 1)
 

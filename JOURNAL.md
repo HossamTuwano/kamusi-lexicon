@@ -3,6 +3,14 @@
 Decision log for continuity across sessions and models.
 Append newest entries at the top. Prefer evidence over persuasion.
 
+## 2026-08-13 — Phase 2 planning: sense-anchored translation schema
+
+**Decision:** Phase 2 (Sw ↔ En/De/Es) will attach translations to the existing Swahili **sense**, not to a new concept table. Single additive relation table `translations(sense_id, language, word, …)`; lemmas/senses/examples untouched; translation rows are metadata of a Swahili sense (constitution-compliant, satisfies invariant 1). Reverse lookup is an index scan on `(language, lower(word))`. A WordNet-style concept anchor was considered and rejected for Phase 2 (symmetric-pair needs do not exist yet; later migration stays additive).
+
+**Planning doc:** `PHASE2-PLAN.md` at repo root — schema sketch, canonical `Translation`/`CreateTranslationInput` types (additions only, invariant 2 untouched), planned API surface, web/admin UI, governance parity (versions, moderation, reporting), decision points, and non-goals. No Phase 1 code was changed.
+
+**Next:** review `PHASE2-PLAN.md` and confirm the open decision points (anchor, first languages, moderation parity, POS handling, revision table). Implementation is Phase 2 work and not started.
+
 ---
 
 ## 2026-08-13 — Web dev server fix: pre-bundle linked @kamusi packages
