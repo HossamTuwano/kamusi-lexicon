@@ -1,10 +1,13 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
 import { CamelCaseInterceptor } from './common/interceptors/camel-case.interceptor';
 
 /**
  * Shared Nest app wiring for runtime + e2e so wire-format stays identical.
  */
 export function configureApp(app: INestApplication): void {
+  app.use(helmet());
+
   const corsOrigins = (
     process.env.CORS_ORIGINS ||
     'http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174'

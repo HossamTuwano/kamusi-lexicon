@@ -17,7 +17,7 @@ export function Shell() {
             <>
               <span className="muted">{user.username}</span>
               <button type="button" className="ghost" onClick={logout}>
-                Tokoa
+                Toka
               </button>
             </>
           ) : (
