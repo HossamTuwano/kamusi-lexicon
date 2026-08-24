@@ -49,11 +49,12 @@ exports.UsersService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
-const user_entity_1 = require("./entities/user.entity");
+const database_1 = require("@kamusi/database");
 const bcrypt = __importStar(require("bcrypt"));
 let UsersService = class UsersService {
-    constructor(userRepository) {
+    constructor(userRepository, contributionRepo) {
         this.userRepository = userRepository;
+        this.contributionRepo = contributionRepo;
     }
     async create(username, email, pass) {
         const hashedPassword = await bcrypt.hash(pass, 10);
@@ -70,13 +71,51 @@ let UsersService = class UsersService {
     async findById(id) {
         return this.userRepository.findOne({ where: { id } });
     }
+    async findAll() {
+        return this.userRepository.find({ order: { id: 'ASC' } });
+    }
+    /**
+     * Promote/demote a user. Guards:
+     * - actor cannot change their own role (prevents accidental self-lockout)
+     * - the last admin cannot be demoted
+     */
+    async updateRole(id, role, actorId) {
+        if (id === actorId) {
+            throw new common_1.ForbiddenException('You cannot change your own role');
+        }
+        const user = await this.userRepository.findOne({ where: { id } });
+        if (!user)
+            throw new common_1.NotFoundException('User not found');
+        if (user.role === 'admin' && role !== 'admin') {
+            const adminCount = await this.userRepository.count({
+                where: { role: 'admin' },
+            });
+            if (adminCount <= 1) {
+                throw new common_1.BadRequestException('Cannot demote the last admin');
+            }
+        }
+        user.role = role;
+        return this.userRepository.save(user);
+    }
     async updateReputation(userId, delta) {
         await this.userRepository.increment({ id: userId }, 'reputation_score', delta);
+    }
+    async getMyContributions(userId, status) {
+        const query = this.contributionRepo
+            .createQueryBuilder('contribution')
+            .leftJoinAndSelect('contribution.lemma', 'lemma')
+            .where('contribution.user_id = :userId', { userId });
+        if (status) {
+            query.andWhere('contribution.status = :status', { status });
+        }
+        return query.orderBy('contribution.created_at', 'DESC').getMany();
     }
 };
 exports.UsersService = UsersService;
 exports.UsersService = UsersService = __decorate([
     (0, common_1.Injectable)(),
-    __param(0, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __param(0, (0, typeorm_1.InjectRepository)(database_1.User)),
+    __param(1, (0, typeorm_1.InjectRepository)(database_1.LemmaContribution)),
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository])
 ], UsersService);

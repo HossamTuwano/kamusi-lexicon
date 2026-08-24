@@ -73,7 +73,7 @@ let AuthService = class AuthService {
     async login(username, pass) {
         const user = await this.usersService.findByUsername(username);
         if (!user || !(await bcrypt.compare(pass, user.password_hash))) {
-            throw new common_2.UnauthorizedException('Invalid credentials');
+            throw new common_2.UnauthorizedException('Jina la mtumiaji au neno la siri si sahihi');
         }
         const payload = {
             sub: user.id,

@@ -2,13 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.seedDictionary = seedDictionary;
 const core_1 = require("@kamusi/core");
-const lemma_entity_1 = require("../../dictionary-entries/entities/lemma.entity");
-const sense_entity_1 = require("../../dictionary-entries/entities/sense.entity");
-const example_entity_1 = require("../../dictionary-entries/entities/example.entity");
+const database_1 = require("@kamusi/database");
 async function seedDictionary(dataSource) {
-    const lemmaRepo = dataSource.getRepository(lemma_entity_1.Lemma);
-    const senseRepo = dataSource.getRepository(sense_entity_1.Sense);
-    const exampleRepo = dataSource.getRepository(example_entity_1.Example);
+    const lemmaRepo = dataSource.getRepository(database_1.Lemma);
+    const senseRepo = dataSource.getRepository(database_1.Sense);
+    const exampleRepo = dataSource.getRepository(database_1.Example);
     console.log('Starting seeding process...');
     const gari = lemmaRepo.create({
         word: 'gari',

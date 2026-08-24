@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DatabaseBootstrapService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("typeorm");
+const users_seed_1 = require("./seeds/users.seed");
 /** Ensures Phase 1 Postgres extensions exist (TypeORM sync does not create them). */
 let DatabaseBootstrapService = class DatabaseBootstrapService {
     constructor(dataSource) {
@@ -19,6 +20,10 @@ let DatabaseBootstrapService = class DatabaseBootstrapService {
     }
     async onModuleInit() {
         await this.dataSource.query('CREATE EXTENSION IF NOT EXISTS pg_trgm');
+        // Seed initial data if needed (in development)
+        if (process.env.NODE_ENV !== 'production') {
+            await (0, users_seed_1.seedUsers)(this.dataSource);
+        }
     }
 };
 exports.DatabaseBootstrapService = DatabaseBootstrapService;

@@ -8,10 +8,12 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpdateRoleDto = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
+const core_1 = require("@kamusi/core");
 const ROLES = ['contributor', 'moderator', 'admin'];
 class UpdateRoleDto {
 }
@@ -19,5 +21,5 @@ exports.UpdateRoleDto = UpdateRoleDto;
 __decorate([
     (0, swagger_1.ApiProperty)({ enum: ROLES, description: 'Target role for the user' }),
     (0, class_validator_1.IsIn)(ROLES),
-    __metadata("design:type", String)
+    __metadata("design:type", typeof (_a = typeof core_1.UserRole !== "undefined" && core_1.UserRole) === "function" ? _a : Object)
 ], UpdateRoleDto.prototype, "role", void 0);

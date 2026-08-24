@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PartOfSpeech, type CreateLemmaInput } from '@kamusi/core';
+import { PartOfSpeech, PartOfSpeechLabels, type CreateLemmaInput } from '@kamusi/core';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 
@@ -77,7 +77,7 @@ export function ContributePage() {
           >
             {Object.values(PartOfSpeech).map((pos) => (
               <option key={pos} value={pos}>
-                {pos}
+                {PartOfSpeechLabels[pos] ? `${PartOfSpeechLabels[pos]} (${pos})` : pos}
               </option>
             ))}
           </select>

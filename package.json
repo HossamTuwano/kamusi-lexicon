@@ -17,6 +17,10 @@
     "test:e2e": "npm run test:e2e --workspace=api",
     "install:all": "npm install && npm run build:packages"
   },
+  "dependencies": {
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1"
+  },
   "devDependencies": {
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",

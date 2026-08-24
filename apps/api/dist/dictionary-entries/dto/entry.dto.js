@@ -8,19 +8,23 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var _a, _b;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SearchDto = exports.UpdateEntryDto = exports.CreateEntryDto = void 0;
+exports.ReportDto = exports.BulkModerateDto = exports.SearchDto = exports.UpdateEntryDto = exports.CreateEntryDto = exports.PART_OF_SPEECH_MESSAGE = exports.MODERATION_ACTIONS = void 0;
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 const core_1 = require("@kamusi/core");
+exports.MODERATION_ACTIONS = ['verify', 'hide', 'restore'];
 const PARTS_OF_SPEECH = Object.values(core_1.PartOfSpeech);
+const REPORT_REASONS = Object.values(core_1.ReportReason);
+exports.PART_OF_SPEECH_MESSAGE = `Aina ya neno si sahihi. Chagua mojawapo ya: ${PARTS_OF_SPEECH.map((code) => `${code} (${core_1.PartOfSpeechLabels[code]})`).join(', ')}`;
 class ExampleDto {
 }
 __decorate([
     (0, swagger_1.ApiProperty)({ description: 'Swahili example sentence' }),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Sentensi ya mfano inahitajika' }),
     __metadata("design:type", String)
 ], ExampleDto.prototype, "sentence", void 0);
 __decorate([
@@ -34,7 +38,7 @@ class SenseDto {
 __decorate([
     (0, swagger_1.ApiProperty)({ description: 'Swahili definition (required for Phase 1)' }),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Maana inahitajika' }),
     __metadata("design:type", String)
 ], SenseDto.prototype, "definition", void 0);
 __decorate([
@@ -57,18 +61,20 @@ exports.CreateEntryDto = CreateEntryDto;
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'gari' }),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsNotEmpty)({ message: 'Neno linahitajika' }),
     __metadata("design:type", String)
 ], CreateEntryDto.prototype, "word", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ enum: PARTS_OF_SPEECH }),
-    (0, class_validator_1.IsIn)(PARTS_OF_SPEECH),
-    __metadata("design:type", String)
+    (0, class_validator_1.IsIn)(PARTS_OF_SPEECH, { message: exports.PART_OF_SPEECH_MESSAGE }),
+    __metadata("design:type", typeof (_a = typeof core_1.PartOfSpeech !== "undefined" && core_1.PartOfSpeech) === "function" ? _a : Object)
 ], CreateEntryDto.prototype, "partOfSpeech", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ type: [SenseDto], minItems: 1 }),
     (0, class_validator_1.IsArray)(),
-    (0, class_validator_1.ArrayMinSize)(1, { message: 'At least one Swahili sense (definition) is required' }),
+    (0, class_validator_1.ArrayMinSize)(1, {
+        message: 'Angalau maana moja (ufafanuzi) wa Kiswahili unahitajika',
+    }),
     (0, class_validator_1.ValidateNested)({ each: true }),
     (0, class_transformer_1.Type)(() => SenseDto),
     __metadata("design:type", Array)
@@ -127,7 +133,9 @@ exports.UpdateEntryDto = UpdateEntryDto;
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ type: [SenseDto], minItems: 1 }),
     (0, class_validator_1.IsArray)(),
-    (0, class_validator_1.ArrayMinSize)(1),
+    (0, class_validator_1.ArrayMinSize)(1, {
+        message: 'Angalau maana moja (ufafanuzi) wa Kiswahili unahitajika',
+    }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.ValidateNested)({ each: true }),
     (0, class_transformer_1.Type)(() => SenseDto),
@@ -201,3 +209,32 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Number)
 ], SearchDto.prototype, "limit", void 0);
+class BulkModerateDto {
+}
+exports.BulkModerateDto = BulkModerateDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ description: 'Entry ids to moderate' }),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ArrayMinSize)(1, { message: 'At least one entry id is required' }),
+    (0, class_validator_1.IsInt)({ each: true }),
+    __metadata("design:type", Array)
+], BulkModerateDto.prototype, "ids", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: exports.MODERATION_ACTIONS }),
+    (0, class_validator_1.IsIn)(exports.MODERATION_ACTIONS),
+    __metadata("design:type", String)
+], BulkModerateDto.prototype, "action", void 0);
+class ReportDto {
+}
+exports.ReportDto = ReportDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ enum: REPORT_REASONS }),
+    (0, class_validator_1.IsIn)(REPORT_REASONS),
+    __metadata("design:type", typeof (_b = typeof core_1.ReportReason !== "undefined" && core_1.ReportReason) === "function" ? _b : Object)
+], ReportDto.prototype, "reason", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Optional detail about the problem' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], ReportDto.prototype, "note", void 0);

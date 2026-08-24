@@ -1,8 +1,6 @@
 import { DataSource } from 'typeorm';
 import { PartOfSpeech } from '@kamusi/core';
-import { Lemma } from '../../dictionary-entries/entities/lemma.entity';
-import { Sense } from '../../dictionary-entries/entities/sense.entity';
-import { Example } from '../../dictionary-entries/entities/example.entity';
+import { Example, Lemma, Sense } from '@kamusi/database';
 
 export async function seedDictionary(dataSource: DataSource) {
   const lemmaRepo = dataSource.getRepository(Lemma);

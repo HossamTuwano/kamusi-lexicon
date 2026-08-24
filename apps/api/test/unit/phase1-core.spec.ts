@@ -15,8 +15,8 @@ describe('@kamusi/core — Phase 1 contract', () => {
   });
 
   it('defines lexical part-of-speech codes for structured entries', () => {
-    expect(PartOfSpeech.NOUN).toBe('noun');
-    expect(PartOfSpeech.VERB).toBe('verb');
+    expect(PartOfSpeech.NOUN).toBe('N');
+    expect(PartOfSpeech.VERB).toBe('T');
     expect(Object.keys(PartOfSpeech).length).toBeGreaterThanOrEqual(8);
   });
 

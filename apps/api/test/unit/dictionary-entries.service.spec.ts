@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import {
   BadRequestException,
   ConflictException,
@@ -9,13 +9,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { CANONICAL_LANGUAGE, PartOfSpeech } from '@kamusi/core';
+import { CANONICAL_LANGUAGE, PartOfSpeech, ContributionAction } from '@kamusi/core';
 import { DictionaryEntriesService } from '../../src/dictionary-entries/dictionary-entries.service';
-import { Lemma } from '../../src/dictionary-entries/entities/lemma.entity';
-import { Sense } from '../../src/dictionary-entries/entities/sense.entity';
-import { Example } from '../../src/dictionary-entries/entities/example.entity';
-import { LemmaContribution } from '../../src/dictionary-entries/entities/lemma-contribution.entity';
-import { LemmaRevision } from '../../src/dictionary-entries/entities/lemma-revision.entity';
+import { ContributionStatus, Example, Lemma, LemmaContribution, LemmaReport, LemmaRevision, Sense } from '@kamusi/database';
 import { createMockCache, createMockRepository } from '../helpers/mock-repositories';
 import { validCreateDto } from '../helpers/phase1-fixtures';
 
@@ -25,14 +21,35 @@ describe('DictionaryEntriesService — Phase 1', () => {
   let senseRepo: ReturnType<typeof createMockRepository>;
   let contributionRepo: ReturnType<typeof createMockRepository>;
   let revisionRepo: ReturnType<typeof createMockRepository>;
+  let reportRepo: ReturnType<typeof createMockRepository>;
   let mockCache: ReturnType<typeof createMockCache>;
+  let mockDataSource: any;
+  let mockQueryRunner: any;
 
   beforeEach(async () => {
     lemmaRepo = createMockRepository();
     senseRepo = createMockRepository();
     contributionRepo = createMockRepository();
     revisionRepo = createMockRepository();
+    reportRepo = createMockRepository();
     mockCache = createMockCache();
+
+    mockQueryRunner = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      startTransaction: vi.fn().mockResolvedValue(undefined),
+      commitTransaction: vi.fn().mockResolvedValue(undefined),
+      rollbackTransaction: vi.fn().mockResolvedValue(undefined),
+      release: vi.fn().mockResolvedValue(undefined),
+      manager: {
+        create: vi.fn().mockImplementation((_entity, dto) => ({ ...dto, id: 1 })),
+        save: vi.fn().mockImplementation((entity) => Promise.resolve(entity)),
+        findOne: vi.fn().mockResolvedValue({ id: 1 }),
+      },
+    };
+
+    mockDataSource = {
+      createQueryRunner: vi.fn().mockReturnValue(mockQueryRunner),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -42,7 +59,9 @@ describe('DictionaryEntriesService — Phase 1', () => {
         { provide: getRepositoryToken(Example), useValue: createMockRepository() },
         { provide: getRepositoryToken(LemmaContribution), useValue: contributionRepo },
         { provide: getRepositoryToken(LemmaRevision), useValue: revisionRepo },
+        { provide: getRepositoryToken(LemmaReport), useValue: reportRepo },
         { provide: CACHE_MANAGER, useValue: mockCache },
+        { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
 
@@ -100,13 +119,13 @@ describe('DictionaryEntriesService — Phase 1', () => {
           validCreateDto({ senses: [{ definition: '   ' }] }),
           1,
         ),
-      ).rejects.toThrow('Each sense must have a non-empty Swahili definition');
+      ).rejects.toThrow('Kila maana lazima iwe na ufafanuzi usio tupu wa Kiswahili');
     });
 
     it('rejects incomplete single-word English gloss', async () => {
       await expect(
         service.create(validCreateDto({ senses: [{ definition: 'car' }] }), 1),
-      ).rejects.toThrow('Definition looks incomplete');
+      ).rejects.toThrow('Ufafanuzi unaonekana haujakamilika');
     });
 
     it('rejects duplicate (word, part_of_speech)', async () => {
@@ -235,7 +254,7 @@ describe('DictionaryEntriesService — Phase 1', () => {
       });
 
       await expect(service.delete(1, 10, 'contributor')).rejects.toThrow(
-        'You cannot delete verified entries',
+        'Huwezi kufuta maneno yaliyothibitishwa',
       );
     });
 
@@ -270,7 +289,7 @@ describe('DictionaryEntriesService — Phase 1', () => {
     it('requires moderator role', async () => {
       await expect(
         service.moderate(1, 'verify', 1, 'contributor'),
-      ).rejects.toThrow('Moderator role required');
+      ).rejects.toThrow('Unahitaji kuwa mhakiki');
     });
 
     it('verifies lemma and records contribution', async () => {
@@ -313,6 +332,150 @@ describe('DictionaryEntriesService — Phase 1', () => {
     });
   });
 
+  describe('bulkModerate', () => {
+    it('requires moderator role', async () => {
+      await expect(
+        service.bulkModerate([1, 2], 'verify', 1, 'contributor'),
+      ).rejects.toThrow('Unahitaji kuwa mhakiki');
+    });
+
+    it('verifies multiple lemmas and records contributions', async () => {
+      lemmaRepo.findOne
+        .mockResolvedValueOnce({ id: 1, is_verified: false, is_hidden: false })
+        .mockResolvedValueOnce({ id: 2, is_verified: false, is_hidden: false });
+
+      const result = await service.bulkModerate([1, 2], 'verify', 5, 'moderator');
+
+      expect(result).toEqual({
+        action: 'verify',
+        total: 2,
+        applied: 2,
+        results: [
+          { id: 1, status: 'ok' },
+          { id: 2, status: 'ok' },
+        ],
+      });
+      expect(lemmaRepo.save).toHaveBeenCalledTimes(2);
+      expect(contributionRepo.save).toHaveBeenCalledTimes(2);
+      expect(contributionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'verified' }),
+      );
+    });
+
+    it('reports not-found ids without failing the batch', async () => {
+      lemmaRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 2, is_hidden: true });
+
+      const result = await service.bulkModerate([404, 2], 'restore', 5, 'admin');
+
+      expect(result.applied).toBe(1);
+      expect(result.results).toEqual([
+        { id: 404, status: 'not_found' },
+        { id: 2, status: 'ok' },
+      ]);
+      expect(contributionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'restored' }),
+      );
+    });
+
+    it('rejects empty ids', async () => {
+      await expect(
+        service.bulkModerate([], 'verify', 5, 'moderator'),
+      ).rejects.toThrow('Angalau kitambulisho cha neno moja kinahitajika');
+    });
+  });
+
+  describe('report', () => {
+    const existingLemma = { id: 1, creator_id: 10, is_verified: true, is_hidden: false };
+
+    it('creates a report, increments report_count, and records contribution', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({ ...existingLemma });
+      reportRepo.findOne.mockResolvedValueOnce(null);
+
+      const result = await service.report(1, 42, { reason: 'spam', note: ' Uchafu ' });
+
+      expect(reportRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lemma_id: 1,
+          user_id: 42,
+          reason: 'spam',
+          note: 'Uchafu',
+          status: 'open',
+        }),
+      );
+      expect(lemmaRepo.increment).toHaveBeenCalledWith({ id: 1 }, 'report_count', 1);
+      expect(contributionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'reported', note: 'spam' }),
+      );
+      expect(mockCache.clear).toHaveBeenCalled();
+      expect(result.status).toBe('open');
+    });
+
+    it('forbids reporting your own entry', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({ ...existingLemma, creator_id: 42 });
+
+      await expect(
+        service.report(1, 42, { reason: 'other' }),
+      ).rejects.toThrow('Huwezi kuripoti mchango wako mwenyewe');
+    });
+
+    it('forbids duplicate report from the same user', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({ ...existingLemma });
+      reportRepo.findOne.mockResolvedValueOnce({ id: 7, status: 'open' });
+
+      await expect(
+        service.report(1, 42, { reason: 'spam' }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('throws NotFound when lemma does not exist', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce(null);
+
+      await expect(
+        service.report(404, 42, { reason: 'wrong' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('report resolution on moderation', () => {
+    it('verifying a reported entry resolves open reports and resets the count', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({
+        id: 1,
+        is_verified: false,
+        is_hidden: false,
+        report_count: 2,
+      });
+
+      const result = await service.moderate(1, 'verify', 5, 'moderator');
+
+      expect(reportRepo.update).toHaveBeenCalledWith(
+        { lemma_id: 1, status: 'open' },
+        { status: 'resolved' },
+      );
+      expect(lemmaRepo.update).toHaveBeenCalledWith(
+        { id: 1 },
+        { report_count: 0 },
+      );
+      expect(result.report_count).toBe(0);
+    });
+
+    it('hiding a reported entry also resolves reports', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({
+        id: 1,
+        is_hidden: false,
+        report_count: 1,
+      });
+
+      await service.moderate(1, 'hide', 5, 'moderator');
+
+      expect(reportRepo.update).toHaveBeenCalledWith(
+        { lemma_id: 1, status: 'open' },
+        { status: 'resolved' },
+      );
+    });
+  });
+
   describe('search', () => {
     it('returns cached results without hitting database', async () => {
       mockCache.get.mockResolvedValueOnce([{ word: 'gari' }]);
@@ -334,6 +497,125 @@ describe('DictionaryEntriesService — Phase 1', () => {
         lang: CANONICAL_LANGUAGE,
       });
       expect(mockCache.set).toHaveBeenCalled();
+    });
+
+    it('queries Swahili lemmas including hidden when cache miss (moderation search)', async () => {
+      mockCache.get.mockResolvedValueOnce(null);
+
+      await service.searchModeration({ q: 'gari', page: 1, limit: 10 });
+
+      const qb = lemmaRepo.createQueryBuilder.mock.results[0].value;
+
+      expect(qb.andWhere).not.toHaveBeenCalledWith('lemma.is_hidden = false');
+      expect(qb.andWhere).toHaveBeenCalledWith('lemma.language = :lang', {
+        lang: CANONICAL_LANGUAGE,
+      });
+      expect(mockCache.set).toHaveBeenCalled();
+    });
+  });
+
+  describe('submitContribution', () => {
+    it('submits a contribution proposal for an existing lemma', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({ id: 1, word: 'gari' });
+      contributionRepo.save.mockImplementationOnce((c) => Promise.resolve({ ...c, id: 99 }));
+
+      const result = await service.submitContribution(
+        {
+          lemmaId: 1,
+          action: ContributionAction.ADD_SENSE,
+          proposedSenses: [{ definition: 'Chombo cha usafiri barabarani.' }],
+        },
+        10,
+      );
+
+      expect(result.id).toBe(99);
+      expect(contributionRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lemma_id: 1,
+          user_id: 10,
+          action: ContributionAction.ADD_SENSE,
+          status: ContributionStatus.PENDING,
+        }),
+      );
+    });
+
+    it('throws NotFoundException when lemma does not exist', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce(null);
+
+      await expect(
+        service.submitContribution(
+          {
+            lemmaId: 404,
+            action: ContributionAction.ADD_SENSE,
+          },
+          10,
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('approveContribution', () => {
+    it('forbids non-moderators from approving contributions', async () => {
+      await expect(
+        service.approveContribution({ contributionId: 1 }, 10, 'contributor'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('approves an add_sense contribution and inserts senses/examples', async () => {
+      contributionRepo.findOne.mockResolvedValueOnce({
+        id: 1,
+        lemma_id: 5,
+        action: ContributionAction.ADD_SENSE,
+        status: ContributionStatus.PENDING,
+        proposed_content: {
+          senses: [{ definition: 'Maana mpya.', examples: [{ sentence: 'Mfano mpya.' }] }],
+        },
+      });
+
+      const result = await service.approveContribution({ contributionId: 1 }, 2, 'moderator');
+      expect(result).toEqual({ success: true });
+      expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+      expect(mockCache.clear).toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException if contribution is already processed', async () => {
+      contributionRepo.findOne.mockResolvedValueOnce({
+        id: 1,
+        status: ContributionStatus.APPROVED,
+      });
+
+      await expect(
+        service.approveContribution({ contributionId: 1 }, 2, 'moderator'),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('rejectContribution', () => {
+    it('forbids non-moderators from rejecting contributions', async () => {
+      await expect(
+        service.rejectContribution({ contributionId: 1, reason: 'Duplicate' }, 10, 'contributor'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('marks contribution as rejected with note', async () => {
+      const contribution = {
+        id: 1,
+        status: ContributionStatus.PENDING,
+        note: null,
+      };
+      contributionRepo.findOne.mockResolvedValueOnce(contribution);
+
+      const result = await service.rejectContribution(
+        { contributionId: 1, reason: 'Si sahihi' },
+        2,
+        'moderator',
+      );
+
+      expect(result).toEqual({ success: true });
+      expect(contribution.status).toBe(ContributionStatus.REJECTED);
+      expect(contribution.note).toBe('Rejected: Si sahihi');
+      expect(contributionRepo.save).toHaveBeenCalledWith(contribution);
     });
   });
 });

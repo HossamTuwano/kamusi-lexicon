@@ -1,9 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { VerificationVote } from './entities/vote.entity';
-import { Lemma } from '../dictionary-entries/entities/lemma.entity';
-import { User } from '../users/entities/user.entity';
+import { Lemma, User, VerificationVote } from '@kamusi/database';
 import { UsersService } from '../users/users.service';
 import { ForbiddenException, ConflictException } from '@nestjs/common';
 
@@ -17,7 +15,7 @@ export class VotesService {
   ) {}
 
   async vote(entryId: number, userId: number, voteType: number) {
-    if (voteType !== 1 && voteType !== -1) throw new BadRequestException('Vote must be 1 or -1');
+    if (voteType !== 1 && voteType !== -1) throw new BadRequestException('Kura lazima iwe 1 au -1');
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -28,7 +26,7 @@ export class VotesService {
       if (!lemma) throw new NotFoundException();
 
       if (lemma.creator_id === userId) {
-        throw new ForbiddenException('You cannot vote for your own entry');
+        throw new ForbiddenException('Huwezi kupiga kura kwa mchango wako mwenyewe');
       }
 
       await queryRunner.manager.insert(VerificationVote, {
@@ -59,7 +57,7 @@ export class VotesService {
       return { vote_count: newVoteCount, is_verified: updatedLemma.is_verified };
     } catch (e: any) {
       await queryRunner.rollbackTransaction();
-      if (e.code === '23505') throw new ConflictException('You have already voted on this entry');
+      if (e.code === '23505') throw new ConflictException('Tayari umeshapiga kura kwa mchango huu');
       throw e;
     } finally {
       await queryRunner.release();
@@ -68,6 +66,6 @@ export class VotesService {
 
   async removeVote(entryId: number, userId: number) {
     const result = await this.voteRepo.delete({ entry_id: entryId, user_id: userId });
-    if (result.affected === 0) throw new NotFoundException('Vote not found');
+    if (result.affected === 0) throw new NotFoundException('Kura haikupatikana');
   }
 }

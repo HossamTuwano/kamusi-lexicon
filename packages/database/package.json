@@ -11,6 +11,11 @@
     "dist",
     "sql"
   ],
+  "dependencies": {
+    "@kamusi/core": "*",
+    "class-transformer": "^0.5.1",
+    "typeorm": "^0.3.20"
+  },
   "devDependencies": {
     "typescript": "^5.0.0"
   }

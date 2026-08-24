@@ -32,13 +32,14 @@ NPM Workspaces.
 
 ---
 
-## 📍 CURRENT STATUS (August 6, 2026)
+## 📍 CURRENT STATUS (August 12, 2026)
 
 - **Phase:** 1 (Swahili → Swahili)
 - **Data model:** Lemma → Senses → Examples, plus synonyms/antonyms/derived words/dialect/source
 - **API wire format:** camelCase
 - **Governance:** contributor history, revisions, moderator roles
-- **Recent work:** frontend readiness gaps 1–5 (CORS, camelCase, votes e2e, migrations gate, `apps/web`)
+- **Entities:** consolidated in `@kamusi/database` (single source of truth)
+- **Recent work:** entity consolidation, admin UI (detail view, search, restore)
 
 ---
 

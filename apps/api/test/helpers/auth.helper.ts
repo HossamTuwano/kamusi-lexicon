@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { DataSource } from 'typeorm';
-import { User } from '../../src/users/entities/user.entity';
+import { User } from '@kamusi/database';
 import { E2ETestSetup } from '../builders/e2e-test-setup';
 
 export interface TestAuth {
@@ -36,6 +36,25 @@ export async function registerModerator(
   const auth = await registerContributor(setup.serverHttp, suffix);
   const userRepo = setup.dataSource.getRepository(User);
   await userRepo.update({ id: auth.userId }, { role: 'moderator' });
+
+  const login = await setup.serverHttp
+    .post('/api/auth/login')
+    .send({ username: auth.username, password: 'password123' })
+    .expect(201);
+
+  return {
+    ...auth,
+    token: login.body.accessToken,
+  };
+}
+
+export async function registerAdmin(
+  setup: E2ETestSetup,
+  suffix = Date.now().toString(),
+): Promise<TestAuth> {
+  const auth = await registerContributor(setup.serverHttp, suffix);
+  const userRepo = setup.dataSource.getRepository(User);
+  await userRepo.update({ id: auth.userId }, { role: 'admin' });
 
   const login = await setup.serverHttp
     .post('/api/auth/login')

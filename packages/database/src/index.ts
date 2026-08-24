@@ -10,6 +10,9 @@
  * Shared/staging/prod: DB_SYNC=false and DB_MIGRATIONS_RUN=true.
  */
 
+// Entity exports for shared use across packages
+export * from './entities';
+
 export const REQUIRED_EXTENSIONS = ['pg_trgm'] as const;
 
 export const PHASE1_TABLES = [
@@ -20,6 +23,7 @@ export const PHASE1_TABLES = [
   'verification_votes',
   'lemma_contributions',
   'lemma_revisions',
+  'lemma_reports',
 ] as const;
 
 export const UNIQUE_LEMMA_KEY = ['word', 'part_of_speech'] as const;

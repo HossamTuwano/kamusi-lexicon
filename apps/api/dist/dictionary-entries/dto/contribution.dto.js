@@ -8,6 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RejectContributionDto = exports.ApproveContributionDto = exports.CreateContributionDto = exports.ProposedExampleDto = exports.ProposedSenseDto = void 0;
 const class_validator_1 = require("class-validator");
@@ -56,7 +57,7 @@ __decorate([
 __decorate([
     (0, class_validator_1.IsNotEmpty)({ message: 'Aina ya mchango inahitajika' }),
     (0, class_validator_1.IsEnum)(core_1.ContributionAction, { message: 'Aina ya mchango si sahihi' }),
-    __metadata("design:type", String)
+    __metadata("design:type", typeof (_a = typeof core_1.ContributionAction !== "undefined" && core_1.ContributionAction) === "function" ? _a : Object)
 ], CreateContributionDto.prototype, "action", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),

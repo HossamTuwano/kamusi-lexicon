@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PartOfSpeechLabels } from '@kamusi/core';
 import { api, type ApiLemma } from '../lib/api';
 
 export function HomePage() {
@@ -59,7 +60,9 @@ export function HomePage() {
               <Link key={lemma.id} className="result-link" to={`/entries/${lemma.id}`}>
                 <strong>{lemma.word}</strong>
                 <span className="meta">
-                  {lemma.partOfSpeech}
+                  {PartOfSpeechLabels[lemma.partOfSpeech]
+                    ? `${PartOfSpeechLabels[lemma.partOfSpeech]} (${lemma.partOfSpeech})`
+                    : lemma.partOfSpeech}
                   {lemma.senses?.[0]?.definition
                     ? ` — ${lemma.senses[0].definition}`
                     : ''}
