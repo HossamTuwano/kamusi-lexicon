@@ -10,6 +10,7 @@
     "build:core": "npm run build --workspace=@kamusi/core",
     "build:database": "npm run build --workspace=@kamusi/database",
     "build:packages": "npm run build:core && npm run build:database",
+    "build:all": "npm run build:packages && npm run build --workspace=web",
     "api": "npm run start --workspace=api",
     "api:dev": "npm run start:dev --workspace=api",
     "web:dev": "npm run dev --workspace=web",
