@@ -102,10 +102,14 @@ Wire format: **camelCase** (`partOfSpeech`, `isVerified`, `accessToken`, …).
 | DELETE | `/api/entries/:id/vote` | JWT | Retract vote |
 | POST | `/api/entries/:id/report` | JWT | Flag entry: `{ reason: 'spam'\|'offensive'\|'wrong'\|'duplicate'\|'other', note? }`; creator + duplicate (per user) forbidden |
 | GET | `/api/entries/:id/reports` | JWT (moderator/admin) | Reports for an entry (open first, newest first) |
+| POST | `/api/entries/contribute` | JWT | Propose additions/corrections to an existing lemma (`add_sense`, `add_example`, `correct_info`) |
+| PATCH | `/api/entries/contributions/:id/approve` | JWT (moderator/admin) | Approve and merge proposed contribution into lemma |
+| PATCH | `/api/entries/contributions/:id/reject` | JWT (moderator/admin) | Reject proposed contribution with reason |
 | POST | `/api/auth/register` | no | Creates `contributor` |
 | POST | `/api/auth/login` | no | JWT includes `role` |
 | GET | `/api/users` | JWT (admin) | List all users (password hashes stripped) |
 | PATCH | `/api/users/:id/role` | JWT (admin) | Promote/demote: `{ role: 'contributor'\|'moderator'\|'admin' }`; self-change and demoting the last admin are forbidden |
+| GET | `/api/users/me/contributions` | JWT | Get user's own contribution history, filterable by `?status=pending\|approved\|rejected` |
 
 Roles: `contributor` | `moderator` | `admin`.
 
@@ -168,6 +172,20 @@ UPDATE users SET role = 'moderator' WHERE username = 'you';
 ## If you only fix one thing next
 
 Phase 2 is paused. The current milestone is the Phase 1 MVP release. Review `MVP-RELEASE-PLAN.md` and start executing the P0/P1 hardening backlog (rate limiting, secrets, `DB_SYNC=false` + migrations in prod, backups, health endpoint, helmet, CI). The e2e promote/demote coverage previously flagged here is already in place (`apps/api/test/e2e/phase1-dictionary.e2e.spec.ts`, "user role management" block).
+
+## Session note (2026-08-21, later)
+
+Fixed two boot blockers; see JOURNAL for detail:
+1. `UsersModule` was missing `LemmaContribution` in its `forFeature(...)` registration (DI failure in `UsersService`).
+2. POS enum drift: init migration + SQL bootstrap still used full-word enum labels after core moved to Swahili codes. Both files now create `'N','W','V','T','E','U','I','H'` with default `'N'`; local DB converted in place without data loss.
+Gotcha: if the `api-api-1` Docker container is running it owns port 3001 and local `api:dev` cannot bind.
+
+Same session, later still (see JOURNAL for detail):
+3. All user-facing API validation/error messages localized to Kiswahili; the stale English POS error QA saw came from an outdated Docker image — container was rebuilt.
+4. F6 web UI: contribution panel on `EntryPage`, moderator "Proposals" tab in admin dashboard backed by new `GET /api/entries/contributions?status=...`. Gotcha: `lemma_contributions` is dual-purpose (audit log + proposals); `findContributions` filters to proposal actions (`add_sense|add_example|correct_info`) so audit rows do not pollute the queue.
+5. F7 web UI: `Michango yangu` page (`/my-contributions`) listing a contributor's own history with Kiswahili status badges.
+6. Hero heading descender fix: `.hero h1` uses `line-height: 1.15` + `padding-bottom: 0.12em` so `g`/`y`/`j` tails can never be painted over by adjacent content, regardless of renderer. Do not remove the padding — it is the actual fix, not the line-height alone.
+
 
 ## Moderation state machine (Phase 1)
 

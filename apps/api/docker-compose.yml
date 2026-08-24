@@ -2,9 +2,9 @@ services:
   postgres:
     image: postgres:15
     environment:
-      POSTGRES_USER: ${DB_USER:-admin}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-FM9Lwrc75HQeaDaubn2tzjcXxH7GEpEeM/eWEEAgXNA=}
-      POSTGRES_DB: ${DB_NAME:-kamusi}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - '5432:5432'
     volumes:
@@ -23,16 +23,16 @@ services:
       - '3001:3001'
     environment:
       DB_HOST: postgres
-      DB_PORT: ${DB_PORT:-5432}
-      DB_USER: ${DB_USER:-admin}
-      DB_PASSWORD: ${DB_PASSWORD:-FM9Lwrc75HQeaDaubn2tzjcXxH7GEpEeM/eWEEAgXNA=}
-      DB_NAME: ${DB_NAME:-kamusi}
-      JWT_SECRET: ${JWT_SECRET:-supersecretkey}
-      DB_SYNC: ${DB_SYNC:-true}
-      NODE_ENV: ${NODE_ENV:-development}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+      DB_SYNC: ${DB_SYNC}
+      NODE_ENV: ${NODE_ENV}
       REDIS_HOST: redis
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174}
+      REDIS_PORT: ${REDIS_PORT}
+      CORS_ORIGINS: ${CORS_ORIGINS}
     depends_on:
       - postgres
       - redis

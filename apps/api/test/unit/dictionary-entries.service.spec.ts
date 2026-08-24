@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import {
   BadRequestException,
   ConflictException,
@@ -9,9 +9,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { CANONICAL_LANGUAGE, PartOfSpeech } from '@kamusi/core';
+import { CANONICAL_LANGUAGE, PartOfSpeech, ContributionAction } from '@kamusi/core';
 import { DictionaryEntriesService } from '../../src/dictionary-entries/dictionary-entries.service';
-import { Example, Lemma, LemmaContribution, LemmaReport, LemmaRevision, Sense } from '@kamusi/database';
+import { ContributionStatus, Example, Lemma, LemmaContribution, LemmaReport, LemmaRevision, Sense } from '@kamusi/database';
 import { createMockCache, createMockRepository } from '../helpers/mock-repositories';
 import { validCreateDto } from '../helpers/phase1-fixtures';
 
@@ -23,6 +23,8 @@ describe('DictionaryEntriesService — Phase 1', () => {
   let revisionRepo: ReturnType<typeof createMockRepository>;
   let reportRepo: ReturnType<typeof createMockRepository>;
   let mockCache: ReturnType<typeof createMockCache>;
+  let mockDataSource: any;
+  let mockQueryRunner: any;
 
   beforeEach(async () => {
     lemmaRepo = createMockRepository();
@@ -31,6 +33,23 @@ describe('DictionaryEntriesService — Phase 1', () => {
     revisionRepo = createMockRepository();
     reportRepo = createMockRepository();
     mockCache = createMockCache();
+
+    mockQueryRunner = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      startTransaction: vi.fn().mockResolvedValue(undefined),
+      commitTransaction: vi.fn().mockResolvedValue(undefined),
+      rollbackTransaction: vi.fn().mockResolvedValue(undefined),
+      release: vi.fn().mockResolvedValue(undefined),
+      manager: {
+        create: vi.fn().mockImplementation((_entity, dto) => ({ ...dto, id: 1 })),
+        save: vi.fn().mockImplementation((entity) => Promise.resolve(entity)),
+        findOne: vi.fn().mockResolvedValue({ id: 1 }),
+      },
+    };
+
+    mockDataSource = {
+      createQueryRunner: vi.fn().mockReturnValue(mockQueryRunner),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -42,6 +61,7 @@ describe('DictionaryEntriesService — Phase 1', () => {
         { provide: getRepositoryToken(LemmaRevision), useValue: revisionRepo },
         { provide: getRepositoryToken(LemmaReport), useValue: reportRepo },
         { provide: CACHE_MANAGER, useValue: mockCache },
+        { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
 
@@ -99,13 +119,13 @@ describe('DictionaryEntriesService — Phase 1', () => {
           validCreateDto({ senses: [{ definition: '   ' }] }),
           1,
         ),
-      ).rejects.toThrow('Each sense must have a non-empty Swahili definition');
+      ).rejects.toThrow('Kila maana lazima iwe na ufafanuzi usio tupu wa Kiswahili');
     });
 
     it('rejects incomplete single-word English gloss', async () => {
       await expect(
         service.create(validCreateDto({ senses: [{ definition: 'car' }] }), 1),
-      ).rejects.toThrow('Definition looks incomplete');
+      ).rejects.toThrow('Ufafanuzi unaonekana haujakamilika');
     });
 
     it('rejects duplicate (word, part_of_speech)', async () => {
@@ -234,7 +254,7 @@ describe('DictionaryEntriesService — Phase 1', () => {
       });
 
       await expect(service.delete(1, 10, 'contributor')).rejects.toThrow(
-        'You cannot delete verified entries',
+        'Huwezi kufuta maneno yaliyothibitishwa',
       );
     });
 
@@ -269,7 +289,7 @@ describe('DictionaryEntriesService — Phase 1', () => {
     it('requires moderator role', async () => {
       await expect(
         service.moderate(1, 'verify', 1, 'contributor'),
-      ).rejects.toThrow('Moderator role required');
+      ).rejects.toThrow('Unahitaji kuwa mhakiki');
     });
 
     it('verifies lemma and records contribution', async () => {
@@ -316,7 +336,7 @@ describe('DictionaryEntriesService — Phase 1', () => {
     it('requires moderator role', async () => {
       await expect(
         service.bulkModerate([1, 2], 'verify', 1, 'contributor'),
-      ).rejects.toThrow('Moderator role required');
+      ).rejects.toThrow('Unahitaji kuwa mhakiki');
     });
 
     it('verifies multiple lemmas and records contributions', async () => {
@@ -362,7 +382,7 @@ describe('DictionaryEntriesService — Phase 1', () => {
     it('rejects empty ids', async () => {
       await expect(
         service.bulkModerate([], 'verify', 5, 'moderator'),
-      ).rejects.toThrow('At least one entry id is required');
+      ).rejects.toThrow('Angalau kitambulisho cha neno moja kinahitajika');
     });
   });
 
@@ -397,7 +417,7 @@ describe('DictionaryEntriesService — Phase 1', () => {
 
       await expect(
         service.report(1, 42, { reason: 'other' }),
-      ).rejects.toThrow('You cannot report your own entry');
+      ).rejects.toThrow('Huwezi kuripoti mchango wako mwenyewe');
     });
 
     it('forbids duplicate report from the same user', async () => {
@@ -491,6 +511,111 @@ describe('DictionaryEntriesService — Phase 1', () => {
         lang: CANONICAL_LANGUAGE,
       });
       expect(mockCache.set).toHaveBeenCalled();
+    });
+  });
+
+  describe('submitContribution', () => {
+    it('submits a contribution proposal for an existing lemma', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce({ id: 1, word: 'gari' });
+      contributionRepo.save.mockImplementationOnce((c) => Promise.resolve({ ...c, id: 99 }));
+
+      const result = await service.submitContribution(
+        {
+          lemmaId: 1,
+          action: ContributionAction.ADD_SENSE,
+          proposedSenses: [{ definition: 'Chombo cha usafiri barabarani.' }],
+        },
+        10,
+      );
+
+      expect(result.id).toBe(99);
+      expect(contributionRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lemma_id: 1,
+          user_id: 10,
+          action: ContributionAction.ADD_SENSE,
+          status: ContributionStatus.PENDING,
+        }),
+      );
+    });
+
+    it('throws NotFoundException when lemma does not exist', async () => {
+      lemmaRepo.findOne.mockResolvedValueOnce(null);
+
+      await expect(
+        service.submitContribution(
+          {
+            lemmaId: 404,
+            action: ContributionAction.ADD_SENSE,
+          },
+          10,
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('approveContribution', () => {
+    it('forbids non-moderators from approving contributions', async () => {
+      await expect(
+        service.approveContribution({ contributionId: 1 }, 10, 'contributor'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('approves an add_sense contribution and inserts senses/examples', async () => {
+      contributionRepo.findOne.mockResolvedValueOnce({
+        id: 1,
+        lemma_id: 5,
+        action: ContributionAction.ADD_SENSE,
+        status: ContributionStatus.PENDING,
+        proposed_content: {
+          senses: [{ definition: 'Maana mpya.', examples: [{ sentence: 'Mfano mpya.' }] }],
+        },
+      });
+
+      const result = await service.approveContribution({ contributionId: 1 }, 2, 'moderator');
+      expect(result).toEqual({ success: true });
+      expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+      expect(mockCache.clear).toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException if contribution is already processed', async () => {
+      contributionRepo.findOne.mockResolvedValueOnce({
+        id: 1,
+        status: ContributionStatus.APPROVED,
+      });
+
+      await expect(
+        service.approveContribution({ contributionId: 1 }, 2, 'moderator'),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('rejectContribution', () => {
+    it('forbids non-moderators from rejecting contributions', async () => {
+      await expect(
+        service.rejectContribution({ contributionId: 1, reason: 'Duplicate' }, 10, 'contributor'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('marks contribution as rejected with note', async () => {
+      const contribution = {
+        id: 1,
+        status: ContributionStatus.PENDING,
+        note: null,
+      };
+      contributionRepo.findOne.mockResolvedValueOnce(contribution);
+
+      const result = await service.rejectContribution(
+        { contributionId: 1, reason: 'Si sahihi' },
+        2,
+        'moderator',
+      );
+
+      expect(result).toEqual({ success: true });
+      expect(contribution.status).toBe(ContributionStatus.REJECTED);
+      expect(contribution.note).toBe('Rejected: Si sahihi');
+      expect(contributionRepo.save).toHaveBeenCalledWith(contribution);
     });
   });
 });

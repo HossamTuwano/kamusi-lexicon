@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { api, type ApiLemma, type ReportReason } from '../lib/api';
+import { PartOfSpeechLabels } from '@kamusi/core';
+import {
+  api,
+  type ApiLemma,
+  type ContributionAction,
+  type ReportReason,
+} from '../lib/api';
 import { useAuth } from '../lib/auth';
 
 const REPORT_REASONS: Array<{ value: ReportReason; label: string }> = [
@@ -9,6 +15,12 @@ const REPORT_REASONS: Array<{ value: ReportReason; label: string }> = [
   { value: 'wrong', label: 'Maana si sahihi' },
   { value: 'duplicate', label: 'Nakala / inarudiwa' },
   { value: 'other', label: 'Nyingine' },
+];
+
+const CONTRIBUTION_OPTIONS: Array<{ value: ContributionAction; label: string }> = [
+  { value: 'add_sense', label: '+ Ongeza maana' },
+  { value: 'add_example', label: '+ Ongeza mfano' },
+  { value: 'correct_info', label: '+ Pendekeza marekebisho' },
 ];
 
 export function EntryPage() {
@@ -22,6 +34,13 @@ export function EntryPage() {
   const [reportNote, setReportNote] = useState('');
   const [reportMsg, setReportMsg] = useState<string | null>(null);
   const [reportSent, setReportSent] = useState(false);
+  const [contribOpen, setContribOpen] = useState<ContributionAction | null>(null);
+  const [senseDefinition, setSenseDefinition] = useState('');
+  const [senseExample, setSenseExample] = useState('');
+  const [exampleSentence, setExampleSentence] = useState('');
+  const [correctionText, setCorrectionText] = useState('');
+  const [contribMsg, setContribMsg] = useState<string | null>(null);
+  const [contribSent, setContribSent] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -59,6 +78,40 @@ export function EntryPage() {
     }
   }
 
+  async function submitContribution() {
+    if (!lemma || !token || !contribOpen) return;
+    setContribMsg(null);
+
+    const payload =
+      contribOpen === 'add_sense'
+        ? {
+            action: contribOpen,
+            proposedSenses: [
+              {
+                definition: senseDefinition.trim(),
+                examples: senseExample.trim()
+                  ? [{ sentence: senseExample.trim() }]
+                  : undefined,
+              },
+            ],
+          }
+        : contribOpen === 'add_example'
+          ? {
+              action: contribOpen,
+              proposedExamples: [{ sentence: exampleSentence.trim() }],
+            }
+          : { action: contribOpen, proposedText: correctionText.trim() };
+
+    try {
+      await api.contribute(lemma.id, payload, token);
+      setContribSent(true);
+      setContribOpen(null);
+      setContribMsg('Asante! Mchango wako umepokelewa na unasubiri uhakiki.');
+    } catch (err) {
+      setContribMsg(err instanceof Error ? err.message : 'Hitilafu ya mchango');
+    }
+  }
+
   if (error) return <p className="error">{error}</p>;
   if (!lemma) return <p className="muted">Inapakia…</p>;
 
@@ -67,7 +120,9 @@ export function EntryPage() {
       <header className="entry-head">
         <h1>{lemma.word}</h1>
         <span className="badge">
-          {lemma.partOfSpeech}
+          {PartOfSpeechLabels[lemma.partOfSpeech]
+            ? `${PartOfSpeechLabels[lemma.partOfSpeech]} (${lemma.partOfSpeech})`
+            : lemma.partOfSpeech}
           {lemma.plural ? ` · wingi: ${lemma.plural}` : ''}
           {lemma.isVerified ? ' · imethibitishwa' : ''}
         </span>
@@ -111,6 +166,130 @@ export function EntryPage() {
               <strong>Maneno yaliyotokana:</strong> {lemma.derivedWords.join(', ')}
             </p>
           )}
+        </section>
+      )}
+
+      {user && token && (
+        <section className="stack" style={{ marginTop: '1.5rem' }}>
+          <p className="muted">Unayo taarifa zaidi kuhusu neno hili?</p>
+          {!contribSent && (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {CONTRIBUTION_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => {
+                    setContribOpen(contribOpen === opt.value ? null : opt.value);
+                    setContribMsg(null);
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {contribOpen === 'add_sense' && !contribSent && (
+            <div className="stack">
+              <label>
+                Maana mpya (Kiswahili)
+                <textarea
+                  rows={3}
+                  value={senseDefinition}
+                  onChange={(e) => setSenseDefinition(e.target.value)}
+                  required
+                />
+              </label>
+              <label>
+                Mfano wa sentensi (si lazima)
+                <input
+                  value={senseExample}
+                  onChange={(e) => setSenseExample(e.target.value)}
+                />
+              </label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={submitContribution}
+                  disabled={!senseDefinition.trim()}
+                >
+                  Wasilisha maana
+                </button>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => setContribOpen(null)}
+                >
+                  Ghairi
+                </button>
+              </div>
+            </div>
+          )}
+
+          {contribOpen === 'add_example' && !contribSent && (
+            <div className="stack">
+              <label>
+                Mfano mpya wa sentensi
+                <input
+                  value={exampleSentence}
+                  onChange={(e) => setExampleSentence(e.target.value)}
+                  required
+                />
+              </label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={submitContribution}
+                  disabled={!exampleSentence.trim()}
+                >
+                  Wasilisha mfano
+                </button>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => setContribOpen(null)}
+                >
+                  Ghairi
+                </button>
+              </div>
+            </div>
+          )}
+
+          {contribOpen === 'correct_info' && !contribSent && (
+            <div className="stack">
+              <label>
+                Marekebisho unayopendekeza
+                <textarea
+                  rows={3}
+                  value={correctionText}
+                  onChange={(e) => setCorrectionText(e.target.value)}
+                  required
+                />
+              </label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={submitContribution}
+                  disabled={!correctionText.trim()}
+                >
+                  Wasilisha marekebisho
+                </button>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => setContribOpen(null)}
+                >
+                  Ghairi
+                </button>
+              </div>
+            </div>
+          )}
+
+          {contribMsg && <p className="muted">{contribMsg}</p>}
         </section>
       )}
 

@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from '@kamusi/database';
+import { User, LemmaContribution } from '@kamusi/database';
 import { UserRole } from '@kamusi/core';
 import * as bcrypt from 'bcrypt';
 
@@ -15,6 +15,8 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(LemmaContribution)
+    private contributionRepo: Repository<LemmaContribution>,
   ) {}
 
   async create(username: string, email: string, pass: string): Promise<User> {
@@ -71,5 +73,18 @@ export class UsersService {
 
   async updateReputation(userId: number, delta: number): Promise<void> {
     await this.userRepository.increment({ id: userId }, 'reputation_score', delta);
+  }
+
+  async getMyContributions(userId: number, status?: string) {
+    const query = this.contributionRepo
+      .createQueryBuilder('contribution')
+      .leftJoinAndSelect('contribution.lemma', 'lemma')
+      .where('contribution.user_id = :userId', { userId });
+
+    if (status) {
+      query.andWhere('contribution.status = :status', { status });
+    }
+
+    return query.orderBy('contribution.created_at', 'DESC').getMany();
   }
 }

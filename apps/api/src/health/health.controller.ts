@@ -1,4 +1,10 @@
-import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  HttpException,
+} from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { createClient } from 'redis';
 
@@ -29,7 +35,18 @@ export class HealthController {
       };
     } catch (error) {
       // Return a 503 Service Unavailable if health check fails
-      throw new Error(`Health check failed: ${error.message}`);
+      throw new HttpException(
+        {
+          status: 'error',
+          timestamp: new Date().toISOString(),
+          message: error.message,
+          services: {
+            database: 'unknown',
+            redis: 'unknown',
+          },
+        },
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
     }
   }
 }

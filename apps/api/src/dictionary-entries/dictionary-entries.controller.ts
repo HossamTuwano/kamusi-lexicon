@@ -24,7 +24,13 @@ import {
   SearchDto,
   UpdateEntryDto,
 } from './dto/entry.dto';
+import {
+  CreateContributionDto,
+  RejectContributionDto,
+  ApproveContributionDto,
+} from './dto/contribution.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('Dictionary')
 @Controller('entries')
@@ -55,6 +61,20 @@ export class DictionaryEntriesController {
     return this.entriesService.searchModeration(dto);
   }
 
+  @ApiOperation({
+    summary: 'Moderator: List contributions by status (default: pending)',
+  })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Get('contributions')
+  async listContributions(@Query('status') status?: string, @Request() req?: any) {
+    const role = req?.user?.role;
+    if (role !== 'moderator' && role !== 'admin') {
+      throw new ForbiddenException('Moderator role required');
+    }
+    return this.entriesService.findContributions(status);
+  }
+
   @ApiOperation({ summary: 'Fetch single lemma with senses, examples, history' })
   @Get(':id')
   async findOne(@Param('id') id: string) {
@@ -64,6 +84,7 @@ export class DictionaryEntriesController {
   @ApiOperation({ summary: 'Submit new Swahili lemma (Phase 1)' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post()
   async create(@Body() dto: CreateEntryDto, @Request() req: any) {
     return this.entriesService.create(dto, req.user.userId);
@@ -121,6 +142,7 @@ export class DictionaryEntriesController {
   })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @Post(':id/report')
   async report(
     @Param('id') id: string,
@@ -130,15 +152,38 @@ export class DictionaryEntriesController {
     return this.entriesService.report(+id, req.user.userId, dto);
   }
 
-  @ApiOperation({ summary: 'List reports for an entry (moderator/admin only)' })
+  @ApiOperation({ summary: 'Submit a contribution for an existing lemma' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @Get(':id/reports')
-  async reports(@Param('id') id: string, @Request() req: any) {
-    const role = req.user?.role;
-    if (role !== 'moderator' && role !== 'admin') {
-      throw new ForbiddenException('Moderator role required');
-    }
-    return this.entriesService.findReports(+id);
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('contribute')
+  async contribute(
+    @Body() dto: CreateContributionDto,
+    @Request() req: any,
+  ) {
+    return this.entriesService.submitContribution(dto, req.user.userId);
+  }
+
+  @ApiOperation({ summary: 'Moderator: Approve a contribution' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Patch('contributions/:id/approve')
+  async approveContribution(
+    @Param('id') id: string,
+    @Request() req: any,
+  ) {
+    return this.entriesService.approveContribution({ contributionId: +id }, req.user.userId, req.user.role);
+  }
+
+  @ApiOperation({ summary: 'Moderator: Reject a contribution' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Patch('contributions/:id/reject')
+  async rejectContribution(
+    @Param('id') id: string,
+    @Body() dto: RejectContributionDto,
+    @Request() req: any,
+  ) {
+    return this.entriesService.rejectContribution({ contributionId: +id, ...dto }, req.user.userId, req.user.role);
   }
 }

@@ -20,12 +20,14 @@ export function createMockRepository() {
     remove: vi.fn(),
     createQueryBuilder: vi.fn(() => ({
       leftJoinAndSelect: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
       andWhere: vi.fn().mockReturnThis(),
       addSelect: vi.fn().mockReturnThis(),
       orderBy: vi.fn().mockReturnThis(),
       skip: vi.fn().mockReturnThis(),
       take: vi.fn().mockReturnThis(),
       getMany: vi.fn().mockResolvedValue([]),
+      getOne: vi.fn().mockResolvedValue(null),
     })),
   };
 }

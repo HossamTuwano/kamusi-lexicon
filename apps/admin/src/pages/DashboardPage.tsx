@@ -1,15 +1,25 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { PartOfSpeechLabels } from '@kamusi/core'
 import {
   usePendingLemmas,
   useHiddenLemmas,
   useReportedLemmas,
+  useProposals,
+  useApproveProposal,
+  useRejectProposal,
   useModerateLemma,
   useBulkModerateLemma,
 } from '../lib/lemmas'
 import { useAuth } from '../lib/auth-context'
 
 type ModerationAction = 'verify' | 'hide' | 'restore'
+
+const ACTION_LABELS: Record<string, string> = {
+  add_sense: 'Add sense',
+  add_example: 'Add example',
+  correct_info: 'Correction',
+}
 
 function EntryCard({
   entry,
@@ -66,7 +76,9 @@ function EntryCard({
               </span>
             )}
             <span className="px-2 py-1 text-xs font-medium bg-slate-100 text-slate-600 rounded-md uppercase">
-              {entry.partOfSpeech}
+              {PartOfSpeechLabels[entry.partOfSpeech as keyof typeof PartOfSpeechLabels]
+                ? `${PartOfSpeechLabels[entry.partOfSpeech as keyof typeof PartOfSpeechLabels]} (${entry.partOfSpeech})`
+                : entry.partOfSpeech}
             </span>
           </div>
         </div>
@@ -194,9 +206,159 @@ function LemmaGrid({
   )
 }
 
+function ProposalCard({ proposal }: { proposal: any }) {
+  const { mutate: approve, isPending: isApproving } = useApproveProposal()
+  const { mutate: reject, isPending: isRejecting } = useRejectProposal()
+  const [rejecting, setRejecting] = useState(false)
+  const [reason, setReason] = useState('')
+  const busy = isApproving || isRejecting
+
+  const content = proposal.proposedContent ?? {}
+
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+      <div className="flex justify-between items-start mb-3 gap-2 flex-wrap">
+        <div>
+          <span className="text-lg font-bold text-slate-900">
+            {proposal.lemma?.word || `#${proposal.lemmaId}`}
+          </span>
+          {proposal.lemma && (
+            <span className="ml-2 px-2 py-1 text-xs font-medium bg-slate-100 text-slate-600 rounded-md uppercase">
+              {proposal.lemma.partOfSpeech}
+            </span>
+          )}
+        </div>
+        <div className="flex gap-1.5">
+          <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-md uppercase">
+            {ACTION_LABELS[proposal.action] || proposal.action}
+          </span>
+          <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-md uppercase">
+            {proposal.status}
+          </span>
+        </div>
+      </div>
+
+      <div className="text-slate-700 space-y-2 mb-3">
+        {content.senses?.map((s: any, i: number) => (
+          <p key={i}>
+            <span className="text-slate-400 text-sm">Sense: </span>
+            {s.definition}
+            {s.examples?.map((ex: any, j: number) => (
+              <em key={j} className="block text-sm text-slate-500 ml-4">
+                &ldquo;{ex.sentence}&rdquo;
+              </em>
+            ))}
+          </p>
+        ))}
+        {content.examples?.map((ex: any, i: number) => (
+          <p key={i} className="italic">
+            &ldquo;{ex.sentence}&rdquo;
+          </p>
+        ))}
+        {content.text && <p>{content.text}</p>}
+      </div>
+
+      {proposal.note && (
+        <p className="text-sm text-slate-500 italic mb-3">Note: {proposal.note}</p>
+      )}
+
+      <p className="text-xs text-slate-400 mb-4">
+        by{' '}
+        <span className="font-medium">
+          {proposal.username ? proposal.username : 'User #' + proposal.userId}
+        </span>{' '}
+        &middot; {new Date(proposal.createdAt).toLocaleString('en-GB')}
+      </p>
+
+      {rejecting ? (
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Reason for rejection..."
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+          />
+          <div className="flex gap-2">
+            <button
+              disabled={busy || !reason.trim()}
+              onClick={() => reject({ id: proposal.id, reason: reason.trim() })}
+              className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+            >
+              Confirm reject
+            </button>
+            <button
+              onClick={() => {
+                setRejecting(false)
+                setReason('')
+              }}
+              className="text-sm text-slate-500 hover:text-slate-700 py-2 px-3 rounded-lg transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <button
+            disabled={busy}
+            onClick={() => approve(proposal.id)}
+            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-3 rounded-lg transition-colors duration-200 text-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Approve
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => setRejecting(true)}
+            className="flex-1 bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 font-medium py-2 px-3 rounded-lg transition-colors duration-200 text-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Reject
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ProposalsPanel() {
+  const { data: proposals, isLoading, isError, error } = useProposals('pending')
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="bg-red-50 border-l-4 border-red-500 p-4 text-red-700">
+        Error loading proposals: {error?.message}
+      </div>
+    )
+  }
+
+  if (!proposals || proposals.length === 0) {
+    return (
+      <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300">
+        <p className="text-slate-400 text-lg">No pending proposals.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {proposals.map((p: any) => (
+        <ProposalCard key={p.id} proposal={p} />
+      ))}
+    </div>
+  )
+}
+
 export default function DashboardPage() {
   const { logout, role } = useAuth()
-  const [tab, setTab] = useState<'pending' | 'hidden' | 'reported'>('pending')
+  const [tab, setTab] = useState<'pending' | 'proposals' | 'hidden' | 'reported'>('pending')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
@@ -290,6 +452,16 @@ export default function DashboardPage() {
             Pending
           </button>
           <button
+            onClick={() => setTab('proposals')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+              tab === 'proposals'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            Proposals
+          </button>
+          <button
             onClick={() => setTab('hidden')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
               tab === 'hidden'
@@ -368,9 +540,11 @@ export default function DashboardPage() {
 
         {tab === 'pending'
           ? <PendingPanel q={debouncedSearch} isMod={isMod} selectedIds={selectedIds} onToggleSelect={toggleSelect} onSelectAll={selectAll} />
-          : tab === 'reported'
-            ? <ReportedPanel q={debouncedSearch} isMod={isMod} selectedIds={selectedIds} onToggleSelect={toggleSelect} onSelectAll={selectAll} />
-            : <HiddenPanel q={debouncedSearch} isMod={isMod} selectedIds={selectedIds} onToggleSelect={toggleSelect} onSelectAll={selectAll} />}
+          : tab === 'proposals'
+            ? <ProposalsPanel />
+            : tab === 'reported'
+              ? <ReportedPanel q={debouncedSearch} isMod={isMod} selectedIds={selectedIds} onToggleSelect={toggleSelect} onSelectAll={selectAll} />
+              : <HiddenPanel q={debouncedSearch} isMod={isMod} selectedIds={selectedIds} onToggleSelect={toggleSelect} onSelectAll={selectAll} />}
       </main>
     </div>
   )

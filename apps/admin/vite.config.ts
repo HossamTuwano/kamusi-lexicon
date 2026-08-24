@@ -8,8 +8,16 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
-    port: 5174
-  }
+    port: 5174,
+  },
+  optimizeDeps: {
+    include: ['@kamusi/core', '@kamusi/database'],
+  },
+  build: {
+    commonjsOptions: {
+      include: [/node_modules/, /packages\/(core|database)\//],
+    },
+  },
 })
 
 

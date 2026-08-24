@@ -6,8 +6,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 DO $$ BEGIN
   CREATE TYPE lemmas_part_of_speech_enum AS ENUM (
-    'noun','verb','adjective','adverb','pronoun',
-    'preposition','conjunction','interjection','idiom','phrase'
+    'N','W','V','T','E','U','I','H'
   );
 EXCEPTION WHEN duplicate_object THEN null;
 END $$;
@@ -26,7 +25,7 @@ CREATE TABLE IF NOT EXISTS lemmas (
   id SERIAL PRIMARY KEY,
   word varchar NOT NULL,
   language varchar NOT NULL DEFAULT 'sw',
-  part_of_speech lemmas_part_of_speech_enum NOT NULL DEFAULT 'noun',
+  part_of_speech lemmas_part_of_speech_enum NOT NULL DEFAULT 'N',
   pronunciation varchar NULL,
   plural varchar NULL,
   synonyms text[] NOT NULL DEFAULT '{}',

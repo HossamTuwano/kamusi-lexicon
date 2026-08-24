@@ -3,6 +3,71 @@
 Decision log for continuity across sessions and models.
 Append newest entries at the top. Prefer evidence over persuasion.
 
+## 2026-08-21 (later) — UsersModule DI fix; POS enum drift resolved in schema files
+
+**Context:** `npm run api:dev` failed with `UnknownDependenciesException`: `UsersService` injects `@InjectRepository(LemmaContribution)` but `UsersModule` only registered `TypeOrmModule.forFeature([User])`. After fixing that, boot surfaced a second failure: `invalid input value for enum lemmas_part_of_speech_enum: "noun"` during `DB_SYNC=true` synchronize.
+
+**Root cause of the enum failure:** the 2026-08-21 PartOfSpeech change to Swahili codes (`N`,`W`,`V`,`T`,`E`,`U`,`I`,`H`) was applied to `@kamusi/core` and all consumers, but not to the Phase 1 init migration (`1754490000000-phase1-init.ts`) or the SQL bootstrap (`packages/database/sql/001_phase1_bootstrap.sql`), which still created the Postgres enum with full-word labels (`'noun'`, `'verb'`, ...). The local DB therefore held word-labeled enum values while entities declared code labels, so synchronize's type alteration rejected existing `'noun'` data/defaults.
+
+**Decisions / changes:**
+1. `UsersModule` now registers `TypeOrmModule.forFeature([User, LemmaContribution])`.
+2. Init migration and SQL bootstrap updated to create `lemmas_part_of_speech_enum AS ENUM ('N','W','V','T','E','U','I','H')` with default `'N'`, matching the canonical model exactly (the retired `'idiom'`/`'phrase'` labels are gone).
+3. Local dev DB converted in place, data-preserving (rename old type, create new, CASE-map words to codes, swap default, drop old type). All rows kept. No destructive reset was needed.
+4. Note: port 3001 on this machine is published by the long-running `api-api-1` Docker container; local `api:dev` cannot listen while it is up.
+
+**Follow-up (same day) — Kiswahili API validation messages:** QA surfaced the stale English error `partOfSpeech must be one of the following values: noun, verb, ...` — it came from the outdated Docker image, not the code. Decisions:
+1. All class-validator messages in entry/contribution DTOs are now Kiswahili; the POS message is built dynamically from `PartOfSpeechLabels` (e.g. "Aina ya neno si sahihi. Chagua mojawapo ya: N (Nomino), ...").
+2. User-facing service errors in dictionary-entries + votes + auth services localized to Kiswahili ("mhakiki" adopted for moderator, per fix-list vocabulary). Admin/user-management messages remain English (admin portal is an internal tool).
+3. Unit tests asserting old English strings updated to the new messages.
+4. The running `api-api-1` container was rebuilt (`docker compose up -d --build api`) so QA hits current code.
+
+**Follow-up (same day) — F6 contributor UI:** The propose-additions flow existed only at the API (`POST /api/entries/contribute`) and admin moderation side; the web app had no entry point. Added:
+1. `api.contribute(...)` client method in `apps/web/src/lib/api.ts`.
+2. Contribution panel on `EntryPage`: "+ Ongeza maana", "+ Ongeza mfano", "+ Pendekeza marekebisho" (add_sense / add_example / correct_info), with Kiswahili labels and a pending-confirmation message. Verified end-to-end: proposal lands as `pending` for moderator review.
+
+**Follow-up (same day) — F6 moderation queue:** Proposals were invisible to moderators: the API had no list endpoint (only approve/reject by id) and the admin dashboard tabs tracked entry states only, so a pending proposal on an existing entry surfaced nowhere. Added:
+1. `GET /api/entries/contributions?status=pending|approved|rejected` (moderator/admin only) returning proposals with lemma word/POS and contributor username; declared before `@Get(':id')` to avoid route capture.
+2. Admin dashboard "Proposals" tab (`DashboardPage.tsx`) with approve/reject (reject requires a reason) and react-query hooks in `lemmas.ts`.
+Verified end-to-end: contributor 403 on listing, admin sees queue, approve merges content into the lemma.
+
+**Follow-up (same day) — proposals queue showed audit rows:** `lemma_contributions` is dual-purpose: `recordContribution()` auto-logs lifecycle events (`created`, `verified`, `reported`, ...) while user submissions (`add_sense`, `add_example`, `correct_info`) are real proposals. Audit rows never set a status, and the column defaults to `'pending'`, so the queue listed the entire audit trail (e.g. "kioo" appearing without any proposal, action types "created"/"verified", duplicate words per event). Fix: `findContributions` now restricts to proposal actions (`add_sense|add_example|correct_info`) in addition to the status filter. Known trade-off: audit rows still carry a misleading `'pending'` status in raw data; acceptable for Phase 1 since all readers either filter by action or intend full history (`/users/me/contributions`).
+
+**Follow-up (same day) — F7 contributor history UI:** `GET /users/me/contributions` existed but the web app had no page. Added `Michango yangu` (`/my-contributions`, nav link when logged in): lists proposals + entry history with Kiswahili status badges (Inasubiri uhakiki / Imekubaliwa / Imekataliwa), action labels, proposed-content summary, rejection reason, and status filter tabs. Verified live: proposal appears as pending; status filter works.
+
+**Follow-up (same day) — hero heading descender clipping:** QA reported `g`/`y`/`j` descenders visually cropped in `.hero h1` headings ("Changia", "Ingia", "Michango yangu"). Diagnosis was done with evidence instead of guesswork: headless Chromium + canvas `TextMetrics` showed Syne at 64px needs ~68px of the 69px line box at `line-height: 1.08`, i.e. glyphs fit in flow; a pixel-band analysis of rendered screenshots confirmed full tails in the served build. The crop therefore only manifested in the QA renderer (font fallback, zoom, or DPI fractional-pixel rounding were the suspects; an `h1`→`h2` experiment "fixed" it only because it escapes the entire display-heading rule). Decision: stop chasing renderer quirks and make the heading structurally immune — `.hero h1` now has `line-height: 1.15` plus `padding-bottom: 0.12em`, so descenders terminate inside the heading's own box and no adjacent element can ever paint over them regardless of environment. Cost is ~8px extra space under the heading; accepted.
+
+**Follow-up (same day) — descender "crop" diagnosed as typeface design, not a bug:** QA persisted in reporting cropped `g`/`y` tails even after the padding fix, so QA's actual screenshot was analyzed programmatically (dark-pixel band profile + ASCII-art rendering; this model cannot view images directly). Findings: the screenshot's `Ingia` heading is shape-identical to a verified-good headless render of the same word in Syne 700 at the same size/colors — the `g` tail reaches full descent depth (~13px below baseline) with empty space below, proving no clipping boundary exists. Side-by-side glyph renders confirmed root cause: Syne's `g` and `y` are *designed* with short, blunt, abruptly-ending angular tails (unlike conventional fonts whose tails curve away gracefully), so they read as "chopped" even when complete. No code defect. If QA still dislikes the look, the options are a branding decision (accept the quirk, swap the display font, or restrict Syne to the logo), not a CSS fix.
+
+**Verification:** API boots ("Nest application successfully started", sync clean); all 60 unit tests pass. Live check against rebuilt container: invalid POS returns the Kiswahili code list; missing word/senses return Kiswahili messages; unauthenticated POST /entries returns 401. Web production build green; F6 proposal round-trip verified via API. Heading fix verified by re-rendering `/contribute` headlessly and re-running the pixel analysis: the `g` tail tapers to its tip with clear separation from content below.
+
+---
+
+## 2026-08-21 — Swahili Grammatical Categories, Existing Lemma Contribution Proposals, and RolesGuard
+
+**Context:** Testing feedback recorded in `fix-list.md` and linguistic classification documented in `aina-za-maneno.md` indicated requirements for:
+1. Swahili grammatical part-of-speech codes and labels (`Nomino (N)`, `Kiwakilishi (W)`, `Kivumishi (V)`, `Kitenzi (T)`, `Kielezi (E)`, `Kiunganishi (U)`, `Kihisishi (I)`, `Kihusishi (H)`).
+2. Allowing contributors to propose additions/corrections to existing lemmas (`add_sense`, `add_example`, `correct_info`) through a moderation queue rather than duplicating lemmas.
+3. Enabling contributors to view their contribution history (`GET /api/users/me/contributions`).
+4. Server-side role-based access control via `RolesGuard` and `@Roles(...)`.
+
+**Decisions / changes:**
+1. **Canonical types (`@kamusi/core`)**: Updated `PartOfSpeech` with Swahili abbreviations (`N`, `W`, `V`, `T`, `E`, `U`, `I`, `H`) and added `PartOfSpeechLabels` mapping. Converted `ContributionAction` into a const object and type for class-validator compatibility.
+2. **Database entities (`@kamusi/database`)**: Added `ContributionStatus` enum (`pending`, `approved`, `rejected`) and `proposed_content` payload to `LemmaContribution`.
+3. **Contribution proposal endpoints (`apps/api`)**:
+   - `POST /api/entries/contribute` (JWT): contributors submit proposed senses/examples/notes.
+   - `PATCH /api/entries/contributions/:id/approve` (JWT, moderator/admin): merges approved proposed content into the canonical lemma.
+   - `PATCH /api/entries/contributions/:id/reject` (JWT, moderator/admin): marks proposal as rejected with a reason note.
+   - `GET /api/users/me/contributions` (JWT): returns contributor history with status filtering.
+4. **RBAC Guard (`apps/api`)**: Implemented `RolesGuard` and `@Roles()` decorator enforcing role constraints on admin and moderator endpoints.
+5. **UI Localization (`apps/web` & `apps/admin`)**: Integrated `PartOfSpeechLabels` in search results, entry details, and contribution dropdowns. Configured Vite CommonJS workspace bundling options for `apps/admin` and cleaned obsolete compiled config files.
+
+**Verification:**
+- All packages (`@kamusi/core`, `@kamusi/database`) build cleanly.
+- `apps/web` and `apps/admin` production builds verified green.
+- All 60 unit tests in `apps/api` pass.
+
+---
+
 ## 2026-08-13 — Pivot: Phase 2 paused; Phase 1 becomes the MVP
 
 **Decision:** Pause Phase 2 work. The next milestone is shipping Phase 1 as an MVP for friends to test and stress-test. A readiness survey (docker-compose, envs, security) found the app is functionally complete but not production-ready: no HTTPS, rate limiting, security headers, health endpoint, structured logging, backups, CI/CD, or monitoring; `DB_SYNC=true` and dev secrets are the defaults; only the API is Dockerized (web/admin are static Vite builds); `/docs` Swagger is exposed.

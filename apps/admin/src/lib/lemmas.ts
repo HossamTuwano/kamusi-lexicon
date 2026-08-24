@@ -8,6 +8,7 @@ export const lemmaKeys = {
   pending: (q: string) => [...lemmaKeys.lists(), 'pending', q] as const,
   hidden: (q: string) => [...lemmaKeys.lists(), 'hidden', q] as const,
   reported: (q: string) => [...lemmaKeys.lists(), 'reported', q] as const,
+  proposals: (status: string) => [...lemmaKeys.all, 'proposals', status] as const,
   detail: (id: string | number) => [...lemmaKeys.all, 'detail', String(id)] as const,
   reports: (id: string | number) => [...lemmaKeys.all, 'reports', String(id)] as const,
 }
@@ -42,6 +43,25 @@ export const lemmaApi = {
 
   getEntryReports: async (id: string | number) => {
     return authenticatedFetch(`/entries/${id}/reports`)
+  },
+
+  getProposals: async (status = 'pending') => {
+    return authenticatedFetch(
+      `/entries/contributions?status=${encodeURIComponent(status)}`,
+    )
+  },
+
+  approveProposal: async (id: number | string) => {
+    return authenticatedFetch(`/entries/contributions/${id}/approve`, {
+      method: 'PATCH',
+    })
+  },
+
+  rejectProposal: async ({ id, reason }: { id: number | string; reason: string }) => {
+    return authenticatedFetch(`/entries/contributions/${id}/reject`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reason }),
+    })
   },
 
   getEntry: async (id: string | number) => {
@@ -91,6 +111,36 @@ export function useEntryReports(id: string | number, enabled = true) {
     queryKey: lemmaKeys.reports(id),
     queryFn: () => lemmaApi.getEntryReports(id),
     enabled: !!id && enabled,
+  })
+}
+
+export function useProposals(status = 'pending') {
+  return useQuery({
+    queryKey: lemmaKeys.proposals(status),
+    queryFn: () => lemmaApi.getProposals(status),
+  })
+}
+
+export function useApproveProposal() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: number | string) => lemmaApi.approveProposal(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: lemmaKeys.all })
+    },
+  })
+}
+
+export function useRejectProposal() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number | string; reason: string }) =>
+      lemmaApi.rejectProposal({ id, reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: lemmaKeys.all })
+    },
   })
 }
 

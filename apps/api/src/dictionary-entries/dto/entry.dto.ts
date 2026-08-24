@@ -11,7 +11,7 @@ import {
   IsInt,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { PartOfSpeech, ReportReason } from '@kamusi/core';
+import { PartOfSpeech, PartOfSpeechLabels, ReportReason } from '@kamusi/core';
 
 export const MODERATION_ACTIONS = ['verify', 'hide', 'restore'] as const;
 export type ModerationAction = (typeof MODERATION_ACTIONS)[number];
@@ -19,10 +19,14 @@ export type ModerationAction = (typeof MODERATION_ACTIONS)[number];
 const PARTS_OF_SPEECH = Object.values(PartOfSpeech);
 const REPORT_REASONS = Object.values(ReportReason);
 
+export const PART_OF_SPEECH_MESSAGE = `Aina ya neno si sahihi. Chagua mojawapo ya: ${PARTS_OF_SPEECH.map(
+  (code) => `${code} (${PartOfSpeechLabels[code]})`,
+).join(', ')}`;
+
 class ExampleDto {
   @ApiProperty({ description: 'Swahili example sentence' })
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Sentensi ya mfano inahitajika' })
   sentence: string;
 
   @ApiPropertyOptional()
@@ -34,7 +38,7 @@ class ExampleDto {
 class SenseDto {
   @ApiProperty({ description: 'Swahili definition (required for Phase 1)' })
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Maana inahitajika' })
   definition: string;
 
   @ApiPropertyOptional()
@@ -53,16 +57,18 @@ class SenseDto {
 export class CreateEntryDto {
   @ApiProperty({ example: 'gari' })
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Neno linahitajika' })
   word: string;
 
   @ApiProperty({ enum: PARTS_OF_SPEECH })
-  @IsIn(PARTS_OF_SPEECH)
+  @IsIn(PARTS_OF_SPEECH, { message: PART_OF_SPEECH_MESSAGE })
   partOfSpeech: PartOfSpeech;
 
   @ApiProperty({ type: [SenseDto], minItems: 1 })
   @IsArray()
-  @ArrayMinSize(1, { message: 'At least one Swahili sense (definition) is required' })
+  @ArrayMinSize(1, {
+    message: 'Angalau maana moja (ufafanuzi) wa Kiswahili unahitajika',
+  })
   @ValidateNested({ each: true })
   @Type(() => SenseDto)
   senses: SenseDto[];
@@ -112,7 +118,9 @@ export class CreateEntryDto {
 export class UpdateEntryDto {
   @ApiPropertyOptional({ type: [SenseDto], minItems: 1 })
   @IsArray()
-  @ArrayMinSize(1)
+  @ArrayMinSize(1, {
+    message: 'Angalau maana moja (ufafanuzi) wa Kiswahili unahitajika',
+  })
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => SenseDto)

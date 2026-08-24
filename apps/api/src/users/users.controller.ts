@@ -6,11 +6,14 @@ import {
   Body,
   UseGuards,
   Request,
-  ForbiddenException,
+  Query,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 import { UpdateRoleDto } from './dto/update-role.dto';
 
 @ApiTags('Users')
@@ -20,10 +23,10 @@ export class UsersController {
 
   @ApiOperation({ summary: 'List all users (admin only)' })
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   @Get()
   async list(@Request() req) {
-    this.assertAdmin(req.user?.role);
     const users = await this.usersService.findAll();
     // Strip password hashes before returning.
     return users.map(({ password_hash: _pw, ...user }) => user);
@@ -31,14 +34,14 @@ export class UsersController {
 
   @ApiOperation({ summary: "Change a user's role (admin only)" })
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   @Patch(':id/role')
   async updateRole(
     @Param('id') id: string,
     @Body() dto: UpdateRoleDto,
     @Request() req,
   ) {
-    this.assertAdmin(req.user?.role);
     const user = await this.usersService.updateRole(
       +id,
       dto.role,
@@ -53,7 +56,7 @@ export class UsersController {
   async getMe(@Request() req) {
     const user = await this.usersService.findById(req.user.userId);
     if (!user) {
-      throw new Error('User not found');
+      throw new NotFoundException('User not found');
     }
 
     // Remove sensitive data like password before returning
@@ -61,9 +64,14 @@ export class UsersController {
     return userData;
   }
 
-  private assertAdmin(role?: string) {
-    if (role !== 'admin') {
-      throw new ForbiddenException('Admin role required');
-    }
+  @ApiOperation({ summary: 'Get my contribution history' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Get('me/contributions')
+  async getMyContributions(
+    @Request() req: any,
+    @Query('status') status?: string,
+  ) {
+    return this.usersService.getMyContributions(req.user.userId, status);
   }
 }

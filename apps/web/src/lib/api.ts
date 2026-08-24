@@ -9,6 +9,37 @@ export type ReportReason =
   | 'duplicate'
   | 'other';
 
+export type ContributionAction = 'add_sense' | 'add_example' | 'correct_info';
+
+export type ContributionStatus = 'pending' | 'approved' | 'rejected';
+
+export type MyContribution = {
+  id: number;
+  lemmaId?: number;
+  action: string;
+  status: ContributionStatus;
+  note?: string | null;
+  proposedContent?: {
+    senses?: Array<{ definition?: string; examples?: Array<{ sentence?: string }> }>;
+    examples?: Array<{ sentence?: string }>;
+    text?: string;
+  } | null;
+  createdAt: string;
+  lemma?: { id: number; word: string; partOfSpeech: PartOfSpeech } | null;
+};
+
+export type ContributionPayload = {
+  action: ContributionAction;
+  note?: string;
+  proposedSenses?: Array<{
+    definition: string;
+    usageNote?: string;
+    examples?: Array<{ sentence: string }>;
+  }>;
+  proposedExamples?: Array<{ sentence: string }>;
+  proposedText?: string;
+};
+
 export type AuthUser = {
   id: number;
   username: string;
@@ -141,5 +172,16 @@ export const api = {
       { method: 'POST', body: JSON.stringify(payload) },
       token,
     );
+  },
+  contribute(lemmaId: number, payload: ContributionPayload, token: string) {
+    return request<{ id: number; status: string }>(
+      '/entries/contribute',
+      { method: 'POST', body: JSON.stringify({ lemmaId, ...payload }) },
+      token,
+    );
+  },
+  myContributions(status?: ContributionStatus, token?: string) {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+    return request<MyContribution[]>(`/users/me/contributions${qs}`, {}, token);
   },
 };

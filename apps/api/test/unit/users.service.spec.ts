@@ -6,21 +6,24 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { User } from '@kamusi/database';
+import { User, LemmaContribution } from '@kamusi/database';
 import { UsersService } from '../../src/users/users.service';
 import { createMockRepository } from '../helpers/mock-repositories';
 
 describe('UsersService', () => {
   let service: UsersService;
   let userRepo: ReturnType<typeof createMockRepository>;
+  let contributionRepo: ReturnType<typeof createMockRepository>;
 
   beforeEach(async () => {
     userRepo = createMockRepository();
+    contributionRepo = createMockRepository();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
         { provide: getRepositoryToken(User), useValue: userRepo },
+        { provide: getRepositoryToken(LemmaContribution), useValue: contributionRepo },
       ],
     }).compile();
 
@@ -110,6 +113,29 @@ describe('UsersService', () => {
       const result = await service.updateRole(3, 'moderator', 1);
       expect(result.role).toBe('moderator');
       expect(userRepo.count).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getMyContributions', () => {
+    it('returns contributions for the specified user', async () => {
+      const mockContributions = [
+        { id: 1, action: 'add_sense', status: 'pending', user_id: 10 },
+      ];
+      const qb = contributionRepo.createQueryBuilder();
+      qb.getMany.mockResolvedValueOnce(mockContributions);
+      contributionRepo.createQueryBuilder.mockReturnValueOnce(qb);
+
+      const result = await service.getMyContributions(10);
+      expect(result).toEqual(mockContributions);
+      expect(qb.where).toHaveBeenCalledWith('contribution.user_id = :userId', { userId: 10 });
+    });
+
+    it('filters by status when provided', async () => {
+      const qb = contributionRepo.createQueryBuilder();
+      contributionRepo.createQueryBuilder.mockReturnValueOnce(qb);
+
+      await service.getMyContributions(10, 'pending');
+      expect(qb.andWhere).toHaveBeenCalledWith('contribution.status = :status', { status: 'pending' });
     });
   });
 });

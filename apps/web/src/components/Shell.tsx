@@ -15,6 +15,7 @@ export function Shell() {
           <Link to="/contribute">Changia</Link>
           {user ? (
             <>
+              <Link to="/my-contributions">Michango yangu</Link>
               <span className="muted">{user.username}</span>
               <button type="button" className="ghost" onClick={logout}>
                 Toka

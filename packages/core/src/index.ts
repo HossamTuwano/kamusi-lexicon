@@ -14,20 +14,17 @@ export type CanonicalLanguage = typeof CANONICAL_LANGUAGE;
 
 /**
  * Part of speech — technical codes (stable for software).
- * Surface labels in UI/admin may be Swahili (e.g. Nomino) later.
- * Const object (not TS enum) so CJS + ESM consumers (Nest + Vite) interop cleanly.
+ * Based on the official Swahili grammatical categories.
  */
 export const PartOfSpeech = {
-  NOUN: 'noun',
-  VERB: 'verb',
-  ADJECTIVE: 'adjective',
-  ADVERB: 'adverb',
-  PRONOUN: 'pronoun',
-  PREPOSITION: 'preposition',
-  CONJUNCTION: 'conjunction',
-  INTERJECTION: 'interjection',
-  IDIOM: 'idiom',
-  PHRASE: 'phrase',
+  NOUN: 'N',        // Nomino
+  PRONOUN: 'W',     // Viwakilishi
+  ADJECTIVE: 'V',   // Vivumishi
+  VERB: 'T',        // Vitenzi
+  ADVERB: 'E',      // Vielezi
+  CONJUNCTION: 'U', // Viunganishi
+  INTERJECTION: 'I',// Vihisishi / Viingizi
+  PREPOSITION: 'H', // Vihusishi
 } as const;
 
 export type PartOfSpeech = (typeof PartOfSpeech)[keyof typeof PartOfSpeech];
@@ -35,14 +32,20 @@ export type PartOfSpeech = (typeof PartOfSpeech)[keyof typeof PartOfSpeech];
 
 export type UserRole = 'contributor' | 'moderator' | 'admin';
 
-export type ContributionAction =
-  | 'created'
-  | 'updated'
-  | 'verified'
-  | 'hidden'
-  | 'restored'
-  | 'deleted'
-  | 'reported';
+export const ContributionAction = {
+  CREATED: 'created',
+  UPDATED: 'updated',
+  VERIFIED: 'verified',
+  HIDDEN: 'hidden',
+  RESTORED: 'restored',
+  DELETED: 'deleted',
+  REPORTED: 'reported',
+  ADD_SENSE: 'add_sense',
+  ADD_EXAMPLE: 'add_example',
+  CORRECT_INFO: 'correct_info',
+} as const;
+
+export type ContributionAction = (typeof ContributionAction)[keyof typeof ContributionAction];
 
 /**
  * Why a user flagged an entry. Stable codes for software; UI may localize.
@@ -123,6 +126,17 @@ export interface LemmaRevision {
   changedBy: string | number;
   createdAt?: Date;
 }
+
+export const PartOfSpeechLabels: Record<PartOfSpeech, string> = {
+  N: 'Nomino',
+  W: 'Kiwakilishi',
+  V: 'Kivumishi',
+  T: 'Kitenzi',
+  E: 'Kielezi',
+  U: 'Kiunganishi',
+  I: 'Kihisishi',
+  H: 'Kihusishi',
+};
 
 /** Minimum Phase 1 create payload. */
 export interface CreateLemmaInput {

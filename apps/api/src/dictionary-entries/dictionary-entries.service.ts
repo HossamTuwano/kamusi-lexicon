@@ -6,15 +6,17 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { CANONICAL_LANGUAGE, UserRole } from '@kamusi/core';
+import { Repository, DataSource } from 'typeorm';
+import { CANONICAL_LANGUAGE, PartOfSpeechLabels, UserRole } from '@kamusi/core';
 import {
+  ContributionStatus,
   Example,
   Lemma,
   LemmaContribution,
   LemmaReport,
   LemmaRevision,
   Sense,
+  User,
 } from '@kamusi/database';
 import {
   CreateEntryDto,
@@ -23,6 +25,11 @@ import {
   SearchDto,
   UpdateEntryDto,
 } from './dto/entry.dto';
+import {
+  CreateContributionDto,
+  ApproveContributionDto,
+  RejectContributionDto,
+} from './dto/contribution.dto';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { Inject } from '@nestjs/common';
@@ -47,6 +54,7 @@ export class DictionaryEntriesService {
     @InjectRepository(LemmaReport)
     private reportRepo: Repository<LemmaReport>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private dataSource: DataSource,
   ) {}
 
   async search(dto: SearchDto) {
@@ -129,7 +137,9 @@ export class DictionaryEntriesService {
     });
     if (existing) {
       throw new ConflictException(
-        `Lemma "${dto.word}" already exists for part of speech "${dto.partOfSpeech}"`,
+        `Neno "${dto.word}" tayari lipo kwa aina ya neno "${
+          PartOfSpeechLabels[dto.partOfSpeech] ?? dto.partOfSpeech
+        }"`,
       );
     }
 
@@ -171,7 +181,7 @@ export class DictionaryEntriesService {
 
     const isOwner = lemma.creator_id === userId;
     if (!isOwner && !isModerator(role)) {
-      throw new ForbiddenException('Only the creator or a moderator can update this entry');
+      throw new ForbiddenException('Ni mmiliki tu au mhakiki ndiye anayeweza kubadilisha mchango huu');
     }
 
     if (dto.senses) {
@@ -212,11 +222,11 @@ export class DictionaryEntriesService {
 
     const isOwner = lemma.creator_id === userId;
     if (!isOwner && !isModerator(role)) {
-      throw new ForbiddenException('Only the creator or a moderator can delete this entry');
+      throw new ForbiddenException('Ni mmiliki tu au mhakiki ndiye anayeweza kufuta mchango huu');
     }
 
     if (lemma.is_verified && !isModerator(role)) {
-      throw new ForbiddenException('You cannot delete verified entries');
+      throw new ForbiddenException('Huwezi kufuta maneno yaliyothibitishwa');
     }
 
     // Soft-delete preserves contributor history and revisions.
@@ -233,7 +243,7 @@ export class DictionaryEntriesService {
     role: UserRole,
   ) {
     if (!isModerator(role)) {
-      throw new ForbiddenException('Moderator role required');
+      throw new ForbiddenException('Unahitaji kuwa mhakiki');
     }
 
     const lemma = await this.lemmaRepo.findOne({ where: { id } });
@@ -249,11 +259,11 @@ export class DictionaryEntriesService {
     role: UserRole,
   ) {
     if (!isModerator(role)) {
-      throw new ForbiddenException('Moderator role required');
+      throw new ForbiddenException('Unahitaji kuwa mhakiki');
     }
 
     if (!ids?.length) {
-      throw new BadRequestException('At least one entry id is required');
+      throw new BadRequestException('Angalau kitambulisho cha neno moja kinahitajika');
     }
 
     const results: Array<{
@@ -297,14 +307,14 @@ export class DictionaryEntriesService {
     if (!lemma) throw new NotFoundException();
 
     if (lemma.creator_id === userId) {
-      throw new ForbiddenException('You cannot report your own entry');
+      throw new ForbiddenException('Huwezi kuripoti mchango wako mwenyewe');
     }
 
     const existing = await this.reportRepo.findOne({
       where: { lemma_id: id, user_id: userId },
     });
     if (existing) {
-      throw new ConflictException('You have already reported this entry');
+      throw new ConflictException('Tayari umeripoti mchango huu');
     }
 
     const report = this.reportRepo.create({
@@ -360,7 +370,7 @@ export class DictionaryEntriesService {
       await this.lemmaRepo.save(lemma);
       await this.recordContribution(lemma.id, userId, 'restored');
     } else {
-      throw new BadRequestException('Unknown moderation action');
+      throw new BadRequestException('Hatua ya uhakiki haijulikani');
     }
 
     // A moderator decision on the entry resolves any open reports.
@@ -375,18 +385,18 @@ export class DictionaryEntriesService {
     senses: Array<{ definition: string; examples?: Array<{ sentence: string }> }>,
   ) {
     if (!senses?.length) {
-      throw new BadRequestException('At least one Swahili sense is required');
+      throw new BadRequestException('Angalau maana moja ya Kiswahili inahitajika');
     }
     for (const sense of senses) {
       if (!sense.definition?.trim()) {
-        throw new BadRequestException('Each sense must have a non-empty Swahili definition');
+        throw new BadRequestException('Kila maana lazima iwe na ufafanuzi usio tupu wa Kiswahili');
       }
       // Reject obvious English-only glosses that are a single Latin word with no Swahili context.
       // This is a soft guard, not a full language detector.
       const def = sense.definition.trim();
       if (/^[A-Za-z]+$/.test(def) && def.length < 4) {
         throw new BadRequestException(
-          'Definition looks incomplete. Provide a full Swahili definition (e.g. "Chombo cha usafiri...").',
+          'Ufafanuzi unaonekana haujakamilika. Toa ufafanuzi kamili wa Kiswahili (mfano: "Chombo cha usafiri...").',
         );
       }
     }
@@ -437,6 +447,148 @@ export class DictionaryEntriesService {
       }),
     );
   }
+
+  /** Moderator view: proposal queue, newest first. Filter by status (default: pending). */
+  async findContributions(status?: string) {
+    const qb = this.contributionRepo
+      .createQueryBuilder('c')
+      .leftJoinAndSelect('c.lemma', 'lemma')
+      .leftJoin(User, 'user', 'user.id = c.user_id')
+      .addSelect(['user.id', 'user.username'])
+      .where('c.action IN (:...proposalActions)', {
+        proposalActions: ['add_sense', 'add_example', 'correct_info'],
+      })
+      .orderBy('c.created_at', 'DESC');
+
+    if (status) {
+      qb.andWhere('c.status = :status', { status });
+    }
+
+    const { entities, raw } = await qb.getRawAndEntities();
+    return entities.map((c, i) => ({
+      id: c.id,
+      action: c.action,
+      status: c.status,
+      note: c.note,
+      proposedContent: c.proposed_content,
+      createdAt: c.created_at,
+      lemma: c.lemma
+        ? {
+            id: c.lemma.id,
+            word: c.lemma.word,
+            partOfSpeech: c.lemma.part_of_speech,
+          }
+        : null,
+      userId: c.user_id,
+      username: raw[i]?.user_username ?? null,
+    }));
+  }
+
+  async submitContribution(dto: CreateContributionDto, userId: number) {
+    const lemma = await this.lemmaRepo.findOne({ where: { id: dto.lemmaId } });
+    if (!lemma) throw new NotFoundException('Neno halipatikani');
+
+    const contribution = this.contributionRepo.create({
+      lemma_id: dto.lemmaId,
+      user_id: userId,
+      action: dto.action,
+      proposed_content: {
+        senses: dto.proposedSenses,
+        examples: dto.proposedExamples,
+        text: dto.proposedText,
+      },
+      note: dto.note ?? null,
+      status: ContributionStatus.PENDING,
+    });
+
+    return this.contributionRepo.save(contribution);
+  }
+
+  async approveContribution(dto: ApproveContributionDto, userId: number, role: UserRole) {
+    if (!isModerator(role)) throw new ForbiddenException('Unahitaji kuwa mhakiki');
+
+    const contribution = await this.contributionRepo.findOne({
+      where: { id: dto.contributionId },
+      relations: ['lemma'],
+    });
+    if (!contribution) throw new NotFoundException('Mchango haukupatikana');
+    if (contribution.status !== ContributionStatus.PENDING) {
+      throw new BadRequestException('Mchango umeshashughulikiwa');
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const content = contribution.proposed_content;
+
+      if (contribution.action === 'add_sense' && content.senses) {
+        for (const sDto of content.senses) {
+          const sense = queryRunner.manager.create(Sense, {
+            definition: sDto.definition,
+            usage_note: sDto.usageNote,
+            lemma_id: contribution.lemma_id,
+          });
+          const savedSense = await queryRunner.manager.save(sense);
+          if (sDto.examples) {
+            const examples = sDto.examples.map(eDto => 
+              queryRunner.manager.create(Example, {
+                sentence: eDto.sentence,
+                note: eDto.note,
+                sense_id: savedSense.id,
+              })
+            );
+            await queryRunner.manager.save(examples);
+          }
+        }
+      } else if (contribution.action === 'add_example' && content.examples) {
+        // Since we don't know WHICH sense to add to in a simple proposal, 
+        // we usually link to the first sense or require a senseId in the proposal.
+        // For Phase 1, we'll link to the most recent sense.
+        const latestSense = await queryRunner.manager.findOne(Sense, {
+          where: { lemma_id: contribution.lemma_id },
+          order: { id: 'DESC' },
+        });
+        if (!latestSense) throw new BadRequestException('Hakuna maana ya kuunganisha mfano nayo');
+        
+        const examples = content.examples.map(eDto => 
+          queryRunner.manager.create(Example, {
+            sentence: eDto.sentence,
+            note: eDto.note,
+            sense_id: latestSense.id,
+          })
+        );
+        await queryRunner.manager.save(examples);
+      }
+
+      contribution.status = ContributionStatus.APPROVED;
+      await queryRunner.manager.save(contribution);
+      
+      await queryRunner.commitTransaction();
+      await this.cacheManager.clear();
+      return { success: true };
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async rejectContribution(dto: RejectContributionDto, userId: number, role: UserRole) {
+    if (!isModerator(role)) throw new ForbiddenException('Unahitaji kuwa mhakiki');
+
+    const contribution = await this.contributionRepo.findOne({ where: { id: dto.contributionId } });
+    if (!contribution) throw new NotFoundException('Mchango haukupatikana');
+
+    contribution.status = ContributionStatus.REJECTED;
+    contribution.note = `Rejected: ${dto.reason}`;
+    await this.contributionRepo.save(contribution);
+
+    return { success: true };
+  }
+
 
   private async recordRevision(lemma: Lemma, userId: number) {
     // Snapshot matches @kamusi/core Lemma shape (camelCase).

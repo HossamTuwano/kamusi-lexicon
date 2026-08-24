@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
+import { PartOfSpeechLabels } from '@kamusi/core'
 import { useEntryDetail, useEntryReports, useModerateLemma } from '../lib/lemmas'
 import { useAuth } from '../lib/auth-context'
 
@@ -74,7 +75,11 @@ export default function EntryDetailPage() {
             <div>
               <h1 className="text-3xl font-bold text-slate-900">{entry.word}</h1>
               <div className="flex items-center gap-2 mt-2">
-                <Badge>{entry.partOfSpeech}</Badge>
+                <Badge>
+                  {PartOfSpeechLabels[entry.partOfSpeech as keyof typeof PartOfSpeechLabels]
+                    ? `${PartOfSpeechLabels[entry.partOfSpeech as keyof typeof PartOfSpeechLabels]} (${entry.partOfSpeech})`
+                    : entry.partOfSpeech}
+                </Badge>
                 {statusBadge}
                 {(entry.reportCount ?? 0) > 0 && (
                   <Badge color="amber">
