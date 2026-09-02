@@ -14,13 +14,16 @@ Append newest entries at the top. Prefer evidence over persuasion.
 4. Orchestrated build scripts in root `package.json` (`build`, `build:all`, `build:api`, `build:web`, `build:admin`) to ensure dependent packages (`@kamusi/core` and `@kamusi/database`) are compiled before dependent applications.
 5. Removed redundant `prebuild` call in `apps/api/package.json`.
 
+6. Added `@nestjs/cli` and `typescript` to root devDependencies and `apps/api` dependencies so production build environments (`NODE_ENV=production`) always have the `nest` executable available in `node_modules/.bin`. Added `.nvmrc` and root `engines` configuration for Node 20+.
 7. Added support for `DATABASE_URL` (with automatic SSL handling) in TypeORM and `REDIS_URL` in CacheModule. Made Redis optional: if `REDIS_URL` and `REDIS_HOST` are omitted or unreachable, CacheModule falls back gracefully to in-memory caching instead of crashing on startup.
+8. Updated `SecretsValidatorMiddleware` to account for `DATABASE_URL` when checking DB credentials in production, and updated route wildcard to `{*path}` for NestJS 11 compatibility.
 
 **Verification:**
 - Full workspace build (`npm run build:all`) succeeded with zero errors.
 - Simulated production build (`NODE_ENV=production npm run build:packages && NODE_ENV=production npm run build:api`) succeeded with `node_modules/.bin/nest` properly linked.
 - Tested API boot without Redis (`REDIS_HOST="" REDIS_URL=""`): CacheModule initialized in-memory cache cleanly.
 - Unit test suite (`npm test`) passed 60/60 tests cleanly.
+- Render deployment succeeded and service went live.
 
 ---
 
