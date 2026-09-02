@@ -1,17 +1,20 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
-    "target": "ES2021",
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "baseUrl": "./",
-    "experimentalDecorators": true,
+    "module": "NodeNext",
+    "declaration": true,
+    "removeComments": true,
     "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2020",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
     "skipLibCheck": true,
-    "strict": false,
-    "esModuleInterop": true,
-    "moduleResolution": "node"
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true
   },
   "include": ["src/**/*"],
-  "exclude": ["src/**/*.spec.ts", "node_modules", "dist", "test"]
+  "exclude": ["node_modules"]
 }
