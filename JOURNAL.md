@@ -17,6 +17,7 @@ Append newest entries at the top. Prefer evidence over persuasion.
 6. Added `@nestjs/cli` and `typescript` to root devDependencies and `apps/api` dependencies so production build environments (`NODE_ENV=production`) always have the `nest` executable available in `node_modules/.bin`. Added `.nvmrc` and root `engines` configuration for Node 20+.
 7. Added support for `DATABASE_URL` (with automatic SSL handling) in TypeORM and `REDIS_URL` in CacheModule. Made Redis optional: if `REDIS_URL` and `REDIS_HOST` are omitted or unreachable, CacheModule falls back gracefully to in-memory caching instead of crashing on startup.
 8. Updated `SecretsValidatorMiddleware` to account for `DATABASE_URL` when checking DB credentials in production, and updated route wildcard to `{*path}` for NestJS 11 compatibility.
+9. Added `https://kamusi.cc` and `https://www.kamusi.cc` to the default CORS origin list in `configureApp()`, and added `.env.example` templates in `apps/web` and `apps/admin`.
 
 **Verification:**
 - Full workspace build (`npm run build:all`) succeeded with zero errors.

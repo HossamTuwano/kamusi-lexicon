@@ -10,7 +10,7 @@ export function configureApp(app: INestApplication): void {
 
   const corsOrigins = (
     process.env.CORS_ORIGINS ||
-    'http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174'
+    'https://kamusi.cc,https://www.kamusi.cc,http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174'
   )
     .split(',')
     .map((o) => o.trim())

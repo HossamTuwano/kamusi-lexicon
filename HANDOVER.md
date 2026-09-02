@@ -183,7 +183,8 @@ Resolved Render build and TypeScript configuration issues:
 5. Added `@nestjs/cli` and `typescript` to root devDependencies and `apps/api` dependencies so `nest` binary is installed and linked in `node_modules/.bin/nest` even in production build environments.
 6. Added support for `DATABASE_URL` (with automatic SSL handling) in TypeORM and `REDIS_URL` in CacheModule. Made Redis optional: if `REDIS_URL` and `REDIS_HOST` are omitted or unreachable, CacheModule falls back gracefully to in-memory caching instead of crashing on startup.
 7. Updated `SecretsValidatorMiddleware` to account for `DATABASE_URL` in production, and updated wildcard routes to `{*path}` for NestJS 11 compatibility.
-8. Render deployment live and healthy at `https://kamusi-lexicon-api.onrender.com`.
+8. Added `https://kamusi.cc` and `https://www.kamusi.cc` to default CORS origins in `configureApp()`.
+9. Render API deployment live and healthy at `https://kamusi-lexicon-api.onrender.com`.
 
 ## Session note (2026-08-21, later)
 
