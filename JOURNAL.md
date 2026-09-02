@@ -3,6 +3,23 @@
 Decision log for continuity across sessions and models.
 Append newest entries at the top. Prefer evidence over persuasion.
 
+## 2026-09-02 — Self-contained tsconfig configurations for Render deployment
+
+**Context:** Deployment on Render failed due to relative path resolution issues with `"extends": "../../tsconfig.base.json"` when compiling workspaces independently. In addition, extraneous tracked build artifacts (`dist/` directories, `.tsbuildinfo`, and `node_modules` inside apps) in git index caused build conflicts in CI environments.
+
+**Decisions / changes:**
+1. Removed `tsconfig.base.json` completely.
+2. Inlined full, self-contained `compilerOptions` into `packages/core/tsconfig.json`, `packages/database/tsconfig.json`, and `apps/api/tsconfig.json`. Each package/app now compiles independently without any `extends` dependency.
+3. Untracked accidentally committed `node_modules` and `dist` directories in `apps/admin`, `apps/web`, `apps/api`, and `packages/database`.
+4. Orchestrated build scripts in root `package.json` (`build`, `build:all`, `build:api`, `build:web`, `build:admin`) to ensure dependent packages (`@kamusi/core` and `@kamusi/database`) are compiled before dependent applications.
+5. Removed redundant `prebuild` call in `apps/api/package.json`.
+
+**Verification:**
+- Full workspace build (`npm run build:all`) succeeded with zero errors.
+- Unit test suite (`npm test`) passed 60/60 tests cleanly.
+
+---
+
 ## 2026-08-21 (later) — UsersModule DI fix; POS enum drift resolved in schema files
 
 **Context:** `npm run api:dev` failed with `UnknownDependenciesException`: `UsersService` injects `@InjectRepository(LemmaContribution)` but `UsersModule` only registered `TypeOrmModule.forFeature([User])`. After fixing that, boot surfaced a second failure: `invalid input value for enum lemmas_part_of_speech_enum: "noun"` during `DB_SYNC=true` synchronize.

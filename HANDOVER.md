@@ -173,6 +173,15 @@ UPDATE users SET role = 'moderator' WHERE username = 'you';
 
 Phase 2 is paused. The current milestone is the Phase 1 MVP release. Review `MVP-RELEASE-PLAN.md` and start executing the P0/P1 hardening backlog (rate limiting, secrets, `DB_SYNC=false` + migrations in prod, backups, health endpoint, helmet, CI). The e2e promote/demote coverage previously flagged here is already in place (`apps/api/test/e2e/phase1-dictionary.e2e.spec.ts`, "user role management" block).
 
+## Session note (2026-09-02)
+
+Resolved Render build and TypeScript configuration issues:
+1. Removed `tsconfig.base.json` completely. Each package (`@kamusi/core`, `@kamusi/database`, `apps/api`) now maintains self-contained `compilerOptions` with no relative `extends` paths.
+2. Untracked accidentally committed `node_modules` and `dist` artifacts from git index.
+3. Updated root `package.json` scripts (`build`, `build:all`, `build:api`, `build:web`, `build:admin`) to ensure dependent packages are built before applications.
+4. Cleaned up redundant `prebuild` call in `apps/api/package.json`.
+5. Verified `npm run build:all` and `npm test` passing cleanly.
+
 ## Session note (2026-08-21, later)
 
 Fixed two boot blockers; see JOURNAL for detail:
