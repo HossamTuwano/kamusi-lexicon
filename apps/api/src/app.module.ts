@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
@@ -26,30 +26,62 @@ import { CommonModule } from './common/common.module';
           : undefined,
       },
     }),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.DB_HOST,
-      port: parseInt(process.env.DB_PORT, 10),
-      username: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      autoLoadEntities: true,
-      // Prefer migrations in shared/staging/prod. Local/e2e may set DB_SYNC=true.
-      // Apply schema via packages/database/sql/001_phase1_bootstrap.sql
-      // or TypeORM CLI against src/db/migrations (do not glob .ts at runtime).
-      synchronize: process.env.NODE_ENV === 'production' ? false : process.env.DB_SYNC === 'true',
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const databaseUrl = config.get<string>('DATABASE_URL') || config.get<string>('DB_URL');
+        const dbSsl = config.get<string>('DB_SSL');
+        const useSsl = dbSsl === 'true' || (databaseUrl && dbSsl !== 'false');
+
+        const connectionConfig = databaseUrl
+          ? { url: databaseUrl }
+          : {
+              host: config.get<string>('DB_HOST', 'localhost'),
+              port: parseInt(config.get<string>('DB_PORT', '5432'), 10),
+              username: config.get<string>('DB_USER', 'postgres'),
+              password: config.get<string>('DB_PASSWORD', 'postgres'),
+              database: config.get<string>('DB_NAME', 'kamusi_dev'),
+            };
+
+        return {
+          type: 'postgres',
+          ...connectionConfig,
+          ssl: useSsl ? { rejectUnauthorized: false } : false,
+          autoLoadEntities: true,
+          synchronize: config.get<string>('NODE_ENV') === 'production'
+            ? false
+            : config.get<string>('DB_SYNC') === 'true',
+        };
+      },
     }),
     CacheModule.registerAsync({
       isGlobal: true,
-      useFactory: async () => ({
-        store: await redisStore({
-          socket: {
-            host: process.env.REDIS_HOST || 'localhost',
-            port: parseInt(process.env.REDIS_PORT || '6379', 10),
-          },
-          ttl: 60 * 60 * 1000, // 1 hour
-        }),
-      }),
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService) => {
+        const redisUrl = config.get<string>('REDIS_URL');
+        const redisHost = config.get<string>('REDIS_HOST');
+        const ttl = 60 * 60 * 1000; // 1 hour
+
+        if (redisUrl || redisHost) {
+          try {
+            const store = await redisStore({
+              url: redisUrl || undefined,
+              socket: !redisUrl && redisHost ? {
+                host: redisHost,
+                port: parseInt(config.get<string>('REDIS_PORT', '6379'), 10),
+              } : undefined,
+              ttl,
+            });
+            return { store: store as any, ttl };
+          } catch (err) {
+            console.error('Failed to initialize Redis store, falling back to in-memory store:', err);
+            return { ttl };
+          }
+        }
+        return { ttl };
+      },
     }),
     ThrottlerModule.forRoot([{
       ttl: 60000, // 1 minute

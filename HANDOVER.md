@@ -181,7 +181,8 @@ Resolved Render build and TypeScript configuration issues:
 3. Updated root `package.json` scripts (`build`, `build:all`, `build:api`, `build:web`, `build:admin`) to ensure dependent packages are built before applications.
 4. Cleaned up redundant `prebuild` call in `apps/api/package.json`.
 5. Added `@nestjs/cli` and `typescript` to root devDependencies and `apps/api` dependencies so `nest` binary is installed and linked in `node_modules/.bin/nest` even in production build environments.
-6. Verified `npm run build:all` and `npm test` passing cleanly.
+6. Added support for `DATABASE_URL` (with automatic SSL handling) in TypeORM and `REDIS_URL` in CacheModule. Made Redis optional: if `REDIS_URL` and `REDIS_HOST` are omitted or unreachable, CacheModule falls back gracefully to in-memory caching instead of crashing on startup.
+7. Verified `npm run build:all` and `npm test` passing cleanly.
 
 ## Session note (2026-08-21, later)
 
