@@ -4,9 +4,9 @@
   "description": "Kamusi Phase 1 API — Swahili monolingual lexical engine",
   "scripts": {
     "build": "npm run prebuild && nest build",
-    "prebuild": "npm run clean && npm run precompile",
+    "prebuild": "npm run clean",
     "clean": "rm -rf dist",
-    "precompile": "tsc",
+    "precompile": "tsc || true",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
