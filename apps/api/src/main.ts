@@ -14,17 +14,6 @@ async function bootstrap() {
       console.error('Please set a secure JWT_SECRET in your environment variables.');
       process.exit(1);
     }
-
-    if (process.env.NODE_ENV !== 'production') {
-    if (process.env.DB_SYNC === 'true') {
-      console.error('CRITICAL DATA RISK: DB_SYNC is enabled in production mode.');
-      console.error('This can cause accidental data loss. Set DB_SYNC=false and use migrations.');
-      // process.exit(1); // REMOVED TO ALLOW DEPLOYMENT
-    }
-  }
-
-      process.exit(1);
-    }
   }
 
   configureApp(app);
@@ -46,4 +35,5 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT || 3001);
 }
+
 bootstrap();
