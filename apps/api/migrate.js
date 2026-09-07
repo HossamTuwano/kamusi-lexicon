@@ -7,7 +7,10 @@ async function runMigrations() {
     process.exit(1);
   }
 
-  const client = new Client({ connectionString });
+  const client = new Client({ 
+    connectionString,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  });
 
   try {
     await client.connect();
