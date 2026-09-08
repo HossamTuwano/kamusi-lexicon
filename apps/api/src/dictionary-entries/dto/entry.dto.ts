@@ -9,6 +9,8 @@ import {
   ArrayUnique,
   IsIn,
   IsInt,
+  Min,
+  Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PartOfSpeech, PartOfSpeechLabels, ReportReason } from '@kamusi/core';
@@ -171,13 +173,37 @@ export class SearchDto {
   @IsOptional()
   q?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ minimum: 1, default: 1 })
+  @Type(() => Number)
+  @IsInt({ message: 'Ukurasa lazima uwe namba' })
+  @Min(1, { message: 'Ukurasa lazima uwe angalau 1' })
   @IsOptional()
   page?: number = 1;
 
-  @ApiPropertyOptional()
+  // Capped so a single request cannot ask for the whole corpus.
+  @ApiPropertyOptional({ minimum: 1, maximum: 100, default: 20 })
+  @Type(() => Number)
+  @IsInt({ message: 'Kikomo lazima kiwe namba' })
+  @Min(1, { message: 'Kikomo lazima kiwe angalau 1' })
+  @Max(100, { message: 'Kikomo hakiwezi kuzidi 100' })
   @IsOptional()
   limit?: number = 20;
+}
+
+export const MODERATION_QUEUES = ['pending', 'hidden', 'reported'] as const;
+export type ModerationQueue = (typeof MODERATION_QUEUES)[number];
+
+export class ModerationSearchDto extends SearchDto {
+  @ApiPropertyOptional({
+    enum: MODERATION_QUEUES,
+    description:
+      'Filter to one moderation queue. Omit to return all entries regardless of state.',
+  })
+  @IsIn(MODERATION_QUEUES, {
+    message: `Foleni si sahihi. Chagua mojawapo ya: ${MODERATION_QUEUES.join(', ')}`,
+  })
+  @IsOptional()
+  status?: ModerationQueue;
 }
 
 export class BulkModerateDto {

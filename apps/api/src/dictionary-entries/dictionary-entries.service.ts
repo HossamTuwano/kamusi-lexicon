@@ -21,6 +21,7 @@ import {
 import {
   CreateEntryDto,
   ModerationAction,
+  ModerationSearchDto,
   ReportDto,
   SearchDto,
   UpdateEntryDto,
@@ -94,13 +95,13 @@ export class DictionaryEntriesService {
    * Moderator search includes hidden entries.
    * Public search intentionally hides them to keep Phase 1 UI safe.
    */
-  async searchModeration(dto: SearchDto) {
-    const { q, page = 1, limit = 20 } = dto;
+  async searchModeration(dto: ModerationSearchDto) {
+    const { q, page = 1, limit = 20, status } = dto;
     const offset = (page - 1) * limit;
 
     const normQ = q?.trim().toLowerCase() || '';
 
-    const cacheKey = `moderation_search:${normQ}:${page}`;
+    const cacheKey = `moderation_search:${status ?? 'all'}:${normQ}:${page}:${limit}`;
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) return cached;
 
@@ -114,16 +115,38 @@ export class DictionaryEntriesService {
       query
         .addSelect('similarity(lemma.word, :q)', 'search_rank')
         .orderBy('search_rank', 'DESC');
+    } else {
+      // Stable ordering for the queue view: newest submissions first.
+      query.orderBy('lemma.created_at', 'DESC');
     }
 
     // Unlike public search, do NOT force is_hidden=false.
     query.andWhere('lemma.language = :lang', { lang: CANONICAL_LANGUAGE });
+
+    // Queue filters run in SQL so the admin never downloads the whole corpus.
+    if (status === 'pending') {
+      query
+        .andWhere('lemma.is_verified = false')
+        .andWhere('lemma.is_hidden = false');
+    } else if (status === 'hidden') {
+      query.andWhere('lemma.is_hidden = true');
+    } else if (status === 'reported') {
+      query.andWhere('lemma.report_count > 0');
+    }
+
     query.skip(offset).take(limit);
 
-    const results = await query.getMany();
-    await this.cacheManager.set(cacheKey, results, 3600);
+    const [items, total] = await query.getManyAndCount();
+    const payload = {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    };
+    await this.cacheManager.set(cacheKey, payload, 3600);
 
-    return results;
+    return payload;
   }
 
   async create(dto: CreateEntryDto, userId: number) {

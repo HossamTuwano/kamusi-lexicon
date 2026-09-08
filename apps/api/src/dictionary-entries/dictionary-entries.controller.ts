@@ -20,6 +20,7 @@ import { DictionaryEntriesService } from './dictionary-entries.service';
 import {
   BulkModerateDto,
   CreateEntryDto,
+  ModerationSearchDto,
   ReportDto,
   SearchDto,
   UpdateEntryDto,
@@ -37,7 +38,10 @@ import { Throttle } from '@nestjs/throttler';
 export class DictionaryEntriesController {
   constructor(private readonly entriesService: DictionaryEntriesService) {}
 
+  // Reading the Kamusi is the primary use. The global 10/min default is sized
+  // for writes and would reject a reader typing a few words in the search box.
   @ApiOperation({ summary: 'Fuzzy search Swahili lemmas' })
+  @Throttle({ read: { limit: 60, ttl: 60000 } })
   @Get('search')
   async search(@Query() dto: SearchDto) {
     if (!dto.q || dto.q.trim().length === 0) {
@@ -48,11 +52,17 @@ export class DictionaryEntriesController {
 
   @ApiOperation({
     summary: 'Moderator search includes hidden entries (Phase 1 moderation)',
+    description:
+      'Filter one queue with ?status=pending|hidden|reported. Omit status for all entries. ' +
+      'Returns a paginated envelope: { items, total, page, limit, totalPages }.',
   })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Get('moderation/search')
-  async moderationSearch(@Query() dto: SearchDto, @Request() req: any) {
+  async moderationSearch(
+    @Query() dto: ModerationSearchDto,
+    @Request() req: any,
+  ) {
     const role = req.user?.role;
     if (role !== 'moderator' && role !== 'admin') {
       throw new ForbiddenException('Moderator role required');
@@ -76,6 +86,7 @@ export class DictionaryEntriesController {
   }
 
   @ApiOperation({ summary: 'Fetch single lemma with senses, examples, history' })
+  @Throttle({ read: { limit: 60, ttl: 60000 } })
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.entriesService.findOne(+id);
@@ -150,6 +161,21 @@ export class DictionaryEntriesController {
     @Request() req: any,
   ) {
     return this.entriesService.report(+id, req.user.userId, dto);
+  }
+
+  @ApiOperation({
+    summary: 'Moderator: list reports for an entry (open first, newest first)',
+  })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/reports')
+  async findReports(@Param('id') id: string, @Request() req: any) {
+    const role = req.user?.role;
+    if (role !== 'moderator' && role !== 'admin') {
+      throw new ForbiddenException('Unahitaji kuwa mhakiki');
+    }
+
+    return this.entriesService.findReports(+id);
   }
 
   @ApiOperation({ summary: 'Submit a contribution for an existing lemma' })

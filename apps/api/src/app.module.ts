@@ -83,10 +83,24 @@ import { CommonModule } from './common/common.module';
         return { ttl };
       },
     }),
-    ThrottlerModule.forRoot([{
-      ttl: 60000, // 1 minute
-      limit: 10,   // 10 requests per minute per IP
-    }]),
+    // The e2e suite drives every request from one IP and would trip these
+    // limits regardless of what it is asserting, so it sets THROTTLE_DISABLED.
+    // Never set that outside tests.
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          name: 'default',
+          ttl: 60000, // 1 minute
+          limit: 10,  // 10 requests per minute per IP
+        },
+        {
+          name: 'read',
+          ttl: 60000, // 1 minute
+          limit: 60,  // 60 requests per minute per IP for read-heavy endpoints
+        },
+      ],
+      skipIf: () => process.env.THROTTLE_DISABLED === 'true',
+    }),
     AuthModule,
     UsersModule,
     DictionaryEntriesModule,

@@ -106,8 +106,9 @@ describe.skipIf(!runE2E)('Phase 1 — Dictionary E2E', () => {
         .query({ q: 'umbo' })
         .expect(200);
 
-      expect(pending.body).toHaveLength(1);
-      expect(pending.body[0].word).toBe('umbo');
+      expect(pending.body.items).toHaveLength(1);
+      expect(pending.body.items[0].word).toBe('umbo');
+      expect(pending.body.total).toBe(1);
 
       const hidden = await setup.serverHttp
         .get('/api/entries/moderation/search')
@@ -115,8 +116,58 @@ describe.skipIf(!runE2E)('Phase 1 — Dictionary E2E', () => {
         .query({ q: 'siri' })
         .expect(200);
 
-      expect(hidden.body).toHaveLength(1);
-      expect(hidden.body[0].word).toBe('siri');
+      expect(hidden.body.items).toHaveLength(1);
+      expect(hidden.body.items[0].word).toBe('siri');
+    });
+
+    it('filters to one queue with ?status', async () => {
+      const moderator = await registerModerator(setup, 'mod_queue');
+      await lemmaFactory.create({
+        word: 'chungwa',
+        is_verified: false,
+        is_hidden: false,
+      });
+      await lemmaFactory.create({
+        word: 'embe',
+        is_verified: true,
+        is_hidden: true,
+      });
+
+      const pending = await setup.serverHttp
+        .get('/api/entries/moderation/search')
+        .set('Authorization', `Bearer ${moderator.token}`)
+        .query({ status: 'pending' })
+        .expect(200);
+
+      const pendingWords = pending.body.items.map((e: any) => e.word);
+      expect(pendingWords).toContain('chungwa');
+      expect(pendingWords).not.toContain('embe');
+
+      const hidden = await setup.serverHttp
+        .get('/api/entries/moderation/search')
+        .set('Authorization', `Bearer ${moderator.token}`)
+        .query({ status: 'hidden' })
+        .expect(200);
+
+      const hiddenWords = hidden.body.items.map((e: any) => e.word);
+      expect(hiddenWords).toContain('embe');
+      expect(hiddenWords).not.toContain('chungwa');
+    });
+
+    it('rejects an unknown status and an out-of-range limit', async () => {
+      const moderator = await registerModerator(setup, 'mod_badquery');
+
+      await setup.serverHttp
+        .get('/api/entries/moderation/search')
+        .set('Authorization', `Bearer ${moderator.token}`)
+        .query({ status: 'nonsense' })
+        .expect(400);
+
+      await setup.serverHttp
+        .get('/api/entries/moderation/search')
+        .set('Authorization', `Bearer ${moderator.token}`)
+        .query({ limit: 5000 })
+        .expect(400);
     });
 
     it('forbids contributors from moderation search', async () => {
@@ -559,7 +610,7 @@ describe.skipIf(!runE2E)('Phase 1 — Dictionary E2E', () => {
         .set('Authorization', `Bearer ${moderator.token}`)
         .query({ q: 'taharifa' })
         .expect(200);
-      expect(queue.body[0].reportCount).toBe(1);
+      expect(queue.body.items[0].reportCount).toBe(1);
     });
 
     it('forbids reporting your own entry', async () => {

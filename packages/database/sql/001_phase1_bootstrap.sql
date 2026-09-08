@@ -44,6 +44,10 @@ CREATE TABLE IF NOT EXISTS lemmas (
 
 CREATE INDEX IF NOT EXISTS IDX_lemmas_word ON lemmas (word);
 
+-- Search uses trigram similarity (word % :q), which the btree index above
+-- cannot serve. Without this GIN index every search is a sequential scan.
+CREATE INDEX IF NOT EXISTS IDX_lemmas_word_trgm ON lemmas USING gin (word gin_trgm_ops);
+
 CREATE TABLE IF NOT EXISTS senses (
   id SERIAL PRIMARY KEY,
   definition text NOT NULL,

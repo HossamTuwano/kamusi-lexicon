@@ -27,6 +27,7 @@ export function createMockRepository() {
       skip: vi.fn().mockReturnThis(),
       take: vi.fn().mockReturnThis(),
       getMany: vi.fn().mockResolvedValue([]),
+      getManyAndCount: vi.fn().mockResolvedValue([[], 0]),
       getOne: vi.fn().mockResolvedValue(null),
     })),
   };

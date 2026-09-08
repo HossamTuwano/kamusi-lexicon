@@ -8,7 +8,8 @@ export function Shell() {
     <div className="shell">
       <header className="topbar">
         <Link to="/" className="brand">
-          Kamusi<span>.</span>
+          <img src="/logo.png" alt="Kamusi Logo" className="logo-img" />
+          Kamusi
         </Link>
         <nav className="nav-links">
           <Link to="/">Tafuta</Link>

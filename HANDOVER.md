@@ -173,6 +173,17 @@ UPDATE users SET role = 'moderator' WHERE username = 'you';
 
 Phase 2 is paused. The current milestone is the Phase 1 MVP release. Review `MVP-RELEASE-PLAN.md` and start executing the P0/P1 hardening backlog (rate limiting, secrets, `DB_SYNC=false` + migrations in prod, backups, health endpoint, helmet, CI). The e2e promote/demote coverage previously flagged here is already in place (`apps/api/test/e2e/phase1-dictionary.e2e.spec.ts`, "user role management" block).
 
+## Session note (2026-09-07)
+
+1. Initialized production database on Render with complete Phase 1 schema using updated `apps/api/migrate.js`:
+   - Converted legacy English POS enum to canonical Swahili codes (`N`,`W`,`V`,`T`,`E`,`U`,`I`,`H`).
+   - Created all Phase 1 tables: `users`, `lemmas`, `senses`, `examples`, `verification_votes`, `lemma_contributions`, `lemma_reports`, `lemma_revisions`.
+2. Created super admin account for `hossam` (`role = 'admin'`).
+3. Seeded baseline lexical entry for `gari` (Part of speech `N`, verified).
+4. Configured `start:prod` in `apps/api/package.json` to automatically run `migrate.js` on startup prior to launching the NestJS application.
+5. Verified production endpoints directly: `/api/entries/search?q=gari` returns entry; `/api/auth/login` and `/api/users` function with admin token.
+6. Configured `apps/admin/.env` and root `npm run admin:dev` to allow managing production moderation/users entirely from localhost without exposing the admin portal publicly.
+
 ## Session note (2026-09-02)
 
 Resolved Render build and TypeScript configuration issues:

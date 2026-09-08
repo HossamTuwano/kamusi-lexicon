@@ -3,6 +3,86 @@
 Decision log for continuity across sessions and models.
 Append newest entries at the top. Prefer evidence over persuasion.
 
+## 2026-09-08 — Pre-pilot hardening: read limits, search index, moderation queue
+
+**Context:** Preparing to put Phase 1 in front of real users. An audit of the
+running code found three defects that only appear under real usage, plus a
+credential in an uncommitted change.
+
+**Decisions / changes:**
+
+1. **Read endpoints throttled separately from writes.** `GET /entries/search`
+   and `GET /entries/:id` were inheriting the global 10 req/min/IP limit, which
+   a reader typing in the search box exceeds in seconds. Both now allow 60/min.
+   Auth and write limits are unchanged (login 5, create 5, report 3) — the
+   global default remains sized for writes.
+
+2. **GIN trigram index on `lemmas.word`.** Search matches with `word % :q`,
+   which the existing btree index cannot serve, so every search was a sequential
+   scan. Added `idx_lemmas_word_trgm` to `migrate.js` and the SQL bootstrap.
+   No measurable effect at current corpus size; it is the cost of growth.
+
+3. **Moderation queue filters in SQL, not the browser.** The admin fetched the
+   whole corpus from `/entries/moderation/search` and filtered client-side for
+   the Pending, Hidden, and Reported tabs. Added `?status=pending|hidden|reported`
+   with pagination; the response is now `{ items, total, page, limit, totalPages }`.
+   This is a breaking wire change for that endpoint only.
+
+4. **`SearchDto` page/limit validated.** Previously `@IsOptional()` alone, so a
+   negative or unbounded limit reached the query builder. Now `@IsInt`, `@Min(1)`,
+   and `@Max(100)` on limit.
+
+5. **`GET /entries/:id/reports` implemented.** The route was documented in
+   HANDOVER, implemented in the service as `findReports`, called by the admin UI,
+   and asserted by two e2e tests — but no controller route existed, so the admin
+   Reports panel was returning 404 in production. Added with a moderator check.
+
+6. **Rate limiting made skippable for e2e.** The whole suite drives requests from
+   one IP, so throttling rejected 22 of 36 tests regardless of what they asserted.
+   `ThrottlerModule` now honours `THROTTLE_DISABLED`, set only in `test/setup-e2e.ts`.
+   This is why the suite had been red; the previously reported "34 e2e passing"
+   had not held since throttling was introduced.
+
+7. **Removed the default super-admin password.** `migrate.js` fell back to a
+   hardcoded literal when `ADMIN_PASSWORD` was unset, which would seed a
+   guessable admin into any fresh deployment. It now fails loudly instead, and
+   only when the admin actually needs creating. `apps/api/.env.test` was tracked
+   in git and has been untracked, with `.env.test.example` added in its place.
+
+**Verification:** `tsc --noEmit` clean; 60 unit tests pass; **36/36 e2e pass**
+against real Postgres — the first fully green e2e run since throttling landed.
+
+**Not done / deferred:** provenance columns (`source_type`, `source_ref`) and a
+third verification state for machine-imported entries are deferred until there
+is a confirmed bulk-import source. Bulk import itself is unresolved pending a
+licensing decision — scraping a copyrighted dictionary would conflict with the
+project's open-access commitment.
+
+---
+
+## 2026-09-07 — Production Schema Migration, Super Admin Creation, and Baseline Seed
+
+**Context:** The production database on Render had only partial tables (lemmas, senses, examples) created with obsolete English POS enum labels and was missing the users table, resulting in 500 errors on authentication endpoints. In addition, no admin user or dictionary entries existed in production.
+
+**Decisions / changes:**
+1. Updated `apps/api/migrate.js` to execute the complete Phase 1 schema idempotently:
+   - Added `pg_trgm` extension check.
+   - Converted legacy POS enum to canonical Swahili codes (`N`, `W`, `V`, `T`, `E`, `U`, `I`, `H`).
+   - Created all Phase 1 tables: `users`, `lemmas`, `senses`, `examples`, `verification_votes`, `lemma_contributions` (with status enum and jsonb proposed_content), `lemma_reports`, and `lemma_revisions`.
+   - Seeded super admin account (`username = 'hossam'`, `role = 'admin'`) with bcrypt hashed password.
+   - Seeded initial baseline dictionary entry (`gari` with Nomino part of speech, definitions, and examples) when lemmas table is empty.
+2. Updated `apps/api/package.json` to include `"migrate": "node migrate.js"` and chained migration before start in `"start:prod": "node migrate.js && node dist/main.js"`.
+3. Updated root `package.json` with workspace script `"migrate": "npm run migrate --workspace=api"`.
+
+**Verification:**
+- Executed migration against production database on Render; confirmed all 8 tables, constraints, and indexes created cleanly.
+- Verified live `GET https://kamusi-lexicon-api.onrender.com/api/entries/search?q=gari` returns the complete structured entry with Swahili POS `N` in camelCase wire format.
+- Verified live `POST https://kamusi-lexicon-api.onrender.com/api/auth/login` for user `hossam` returns valid JWT access token with role `admin`.
+- Verified authenticated `GET https://kamusi-lexicon-api.onrender.com/api/users` with the issued token successfully returns user record.
+- Unit tests (`npm test`) continue to pass 60/60 cleanly; full monorepo build (`npm run build:all`) compiles with zero errors.
+
+---
+
 ## 2026-09-02 — Self-contained tsconfig configurations for Render deployment
 
 **Context:** Deployment on Render failed due to relative path resolution issues with `"extends": "../../tsconfig.base.json"` when compiling workspaces independently. In addition, extraneous tracked build artifacts (`dist/` directories, `.tsbuildinfo`, and `node_modules` inside apps) in git index caused build conflicts in CI environments.
