@@ -126,7 +126,7 @@ Expected: 201 Created with vote details
 **Promote user to moderator (local DB):**
 ```bash
 # In postgres console:
-psql postgres://user:password@localhost:5432/kamusi
+psql postgres://<user>:<password>@localhost:5432/kamusi
 UPDATE users SET role = 'moderator' WHERE username = 'alice';
 ```
 
