@@ -33,7 +33,7 @@ export function HomePage() {
       <div className="hero">
         <h1>Kamusi</h1>
         <p>
-          Kamusi ya Kiswahili inayoeleza Kiswahili kwa Kiswahili — maana, mifano, na
+          Kamusi ya Kiswahili inayoeleza maana, mifano, na
           matumizi.
         </p>
         <form className="search-row" onSubmit={onSearch}>
