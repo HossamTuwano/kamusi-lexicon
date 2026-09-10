@@ -16,6 +16,10 @@ lerna-debug.log*
 # OS
 .DS_Store
 
+# Docs/Large Files
+*.pdf
+KAMUSI.pdf
+
 # Tests
 /coverage
 /.nyc_output

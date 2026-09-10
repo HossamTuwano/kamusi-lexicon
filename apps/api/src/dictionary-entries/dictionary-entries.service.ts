@@ -204,7 +204,9 @@ export class DictionaryEntriesService {
 
     const isOwner = lemma.creator_id === userId;
     if (!isOwner && !isModerator(role)) {
-      throw new ForbiddenException('Ni mmiliki tu au mhakiki ndiye anayeweza kubadilisha mchango huu');
+      throw new ForbiddenException(
+        'Ni mmiliki tu au mhakiki ndiye anayeweza kubadilisha mchango huu',
+      );
     }
 
     if (dto.senses) {
@@ -213,7 +215,8 @@ export class DictionaryEntriesService {
       lemma.senses = await this.persistSenses(id, dto.senses);
     }
 
-    if (dto.pronunciation !== undefined) lemma.pronunciation = dto.pronunciation;
+    if (dto.pronunciation !== undefined)
+      lemma.pronunciation = dto.pronunciation;
     if (dto.plural !== undefined) lemma.plural = dto.plural;
     if (dto.synonyms !== undefined) lemma.synonyms = dto.synonyms;
     if (dto.antonyms !== undefined) lemma.antonyms = dto.antonyms;
@@ -245,7 +248,9 @@ export class DictionaryEntriesService {
 
     const isOwner = lemma.creator_id === userId;
     if (!isOwner && !isModerator(role)) {
-      throw new ForbiddenException('Ni mmiliki tu au mhakiki ndiye anayeweza kufuta mchango huu');
+      throw new ForbiddenException(
+        'Ni mmiliki tu au mhakiki ndiye anayeweza kufuta mchango huu',
+      );
     }
 
     if (lemma.is_verified && !isModerator(role)) {
@@ -286,7 +291,9 @@ export class DictionaryEntriesService {
     }
 
     if (!ids?.length) {
-      throw new BadRequestException('Angalau kitambulisho cha neno moja kinahitajika');
+      throw new BadRequestException(
+        'Angalau kitambulisho cha neno moja kinahitajika',
+      );
     }
 
     const results: Array<{
@@ -405,14 +412,21 @@ export class DictionaryEntriesService {
   }
 
   private assertSwahiliSenses(
-    senses: Array<{ definition: string; examples?: Array<{ sentence: string }> }>,
+    senses: Array<{
+      definition: string;
+      examples?: Array<{ sentence: string }>;
+    }>,
   ) {
     if (!senses?.length) {
-      throw new BadRequestException('Angalau maana moja ya Kiswahili inahitajika');
+      throw new BadRequestException(
+        'Angalau maana moja ya Kiswahili inahitajika',
+      );
     }
     for (const sense of senses) {
       if (!sense.definition?.trim()) {
-        throw new BadRequestException('Kila maana lazima iwe na ufafanuzi usio tupu wa Kiswahili');
+        throw new BadRequestException(
+          'Kila maana lazima iwe na ufafanuzi usio tupu wa Kiswahili',
+        );
       }
       // Reject obvious English-only glosses that are a single Latin word with no Swahili context.
       // This is a soft guard, not a full language detector.
@@ -527,8 +541,13 @@ export class DictionaryEntriesService {
     return this.contributionRepo.save(contribution);
   }
 
-  async approveContribution(dto: ApproveContributionDto, userId: number, role: UserRole) {
-    if (!isModerator(role)) throw new ForbiddenException('Unahitaji kuwa mhakiki');
+  async approveContribution(
+    dto: ApproveContributionDto,
+    userId: number,
+    role: UserRole,
+  ) {
+    if (!isModerator(role))
+      throw new ForbiddenException('Unahitaji kuwa mhakiki');
 
     const contribution = await this.contributionRepo.findOne({
       where: { id: dto.contributionId },
@@ -555,39 +574,42 @@ export class DictionaryEntriesService {
           });
           const savedSense = await queryRunner.manager.save(sense);
           if (sDto.examples) {
-            const examples = sDto.examples.map(eDto => 
+            const examples = sDto.examples.map((eDto) =>
               queryRunner.manager.create(Example, {
                 sentence: eDto.sentence,
                 note: eDto.note,
                 sense_id: savedSense.id,
-              })
+              }),
             );
             await queryRunner.manager.save(examples);
           }
         }
       } else if (contribution.action === 'add_example' && content.examples) {
-        // Since we don't know WHICH sense to add to in a simple proposal, 
+        // Since we don't know WHICH sense to add to in a simple proposal,
         // we usually link to the first sense or require a senseId in the proposal.
         // For Phase 1, we'll link to the most recent sense.
         const latestSense = await queryRunner.manager.findOne(Sense, {
           where: { lemma_id: contribution.lemma_id },
           order: { id: 'DESC' },
         });
-        if (!latestSense) throw new BadRequestException('Hakuna maana ya kuunganisha mfano nayo');
-        
-        const examples = content.examples.map(eDto => 
+        if (!latestSense)
+          throw new BadRequestException(
+            'Hakuna maana ya kuunganisha mfano nayo',
+          );
+
+        const examples = content.examples.map((eDto) =>
           queryRunner.manager.create(Example, {
             sentence: eDto.sentence,
             note: eDto.note,
             sense_id: latestSense.id,
-          })
+          }),
         );
         await queryRunner.manager.save(examples);
       }
 
       contribution.status = ContributionStatus.APPROVED;
       await queryRunner.manager.save(contribution);
-      
+
       await queryRunner.commitTransaction();
       await this.cacheManager.clear();
       return { success: true };
@@ -599,10 +621,17 @@ export class DictionaryEntriesService {
     }
   }
 
-  async rejectContribution(dto: RejectContributionDto, userId: number, role: UserRole) {
-    if (!isModerator(role)) throw new ForbiddenException('Unahitaji kuwa mhakiki');
+  async rejectContribution(
+    dto: RejectContributionDto,
+    userId: number,
+    role: UserRole,
+  ) {
+    if (!isModerator(role))
+      throw new ForbiddenException('Unahitaji kuwa mhakiki');
 
-    const contribution = await this.contributionRepo.findOne({ where: { id: dto.contributionId } });
+    const contribution = await this.contributionRepo.findOne({
+      where: { id: dto.contributionId },
+    });
     if (!contribution) throw new NotFoundException('Mchango haukupatikana');
 
     contribution.status = ContributionStatus.REJECTED;
@@ -611,7 +640,6 @@ export class DictionaryEntriesService {
 
     return { success: true };
   }
-
 
   private async recordRevision(lemma: Lemma, userId: number) {
     // Snapshot matches @kamusi/core Lemma shape (camelCase).
