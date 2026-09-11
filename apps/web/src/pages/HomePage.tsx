@@ -1,31 +1,53 @@
-import { FormEvent, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState, SyntheticEvent } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { PartOfSpeechLabels } from '@kamusi/core';
 import { api, type ApiLemma } from '../lib/api';
 
 export function HomePage() {
-  const [q, setQ] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryFromUrl = searchParams.get('q') || '';
+  
+  const [inputValue, setInputValue] = useState(queryFromUrl);
   const [results, setResults] = useState<ApiLemma[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function onSearch(e: FormEvent) {
+  // Sync input value if URL changes externally (e.g. browser back button)
+  useEffect(() => {
+    setInputValue(queryFromUrl);
+  }, [queryFromUrl]);
+
+  // Trigger search when the URL query changes
+  useEffect(() => {
+    async function performSearch() {
+      if (!queryFromUrl) {
+        setResults([]);
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await api.search(queryFromUrl);
+        setResults(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Hitilafu');
+        setResults(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    performSearch();
+  }, [queryFromUrl]);
+
+  async function onSearch(e: SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
-    const query = q.trim();
+    const query = inputValue.trim();
     if (!query) {
-      setResults([]);
+      setSearchParams({});
       return;
     }
-    setLoading(true);
-    setError(null);
-    try {
-      setResults(await api.search(query));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Hitilafu');
-      setResults(null);
-    } finally {
-      setLoading(false);
-    }
+    setSearchParams({ q: query });
   }
 
   return (
@@ -38,8 +60,8 @@ export function HomePage() {
         </p>
         <form className="search-row" onSubmit={onSearch}>
           <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
             placeholder="Tafuta neno… mfano: gari"
             aria-label="Tafuta neno"
           />
