@@ -5,7 +5,7 @@ import { api, type ApiLemma } from '../lib/api';
 import { useSearch } from '../lib/search';
 
 export function HomePage() {
-  const { inputValue, setInputValue, isSticky, setIsSticky } = useSearch();
+  const { inputValue, setInputValue, setIsSticky } = useSearch();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryFromUrl = searchParams.get('q') || '';
   
@@ -93,11 +93,6 @@ export function HomePage() {
             {loading ? 'Inatafuta…' : 'Tafuta'}
           </button>
         </form>
-      </div>
-
-      {/* Debugging label for CP1 Proof */}
-      <div style={{ position: 'fixed', top: 10, right: 10, background: 'black', color: 'white', padding: '5px', zIndex: 1000, fontSize: '12px' }}>
-        Mode: {isSticky ? 'Sticky' : 'Standard'}
       </div>
 
       {error && <p className="error">{error}</p>}
