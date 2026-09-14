@@ -40,6 +40,13 @@ export class DictionaryEntriesController {
 
   // Reading the Kamusi is the primary use. The global 10/min default is sized
   // for writes and would reject a reader typing a few words in the search box.
+  @ApiOperation({ summary: 'List all verified lemmas alphabetically' })
+  @Throttle({ read: { limit: 60, ttl: 60000 } })
+  @Get('list')
+  async list(@Query() dto: SearchDto) {
+    return this.entriesService.list(dto);
+  }
+
   @ApiOperation({ summary: 'Fuzzy search Swahili lemmas' })
   @Throttle({ read: { limit: 60, ttl: 60000 } })
   @Get('search')

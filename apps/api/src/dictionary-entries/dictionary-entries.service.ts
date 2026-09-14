@@ -58,6 +58,31 @@ export class DictionaryEntriesService {
     private dataSource: DataSource,
   ) {}
 
+  async list(dto: SearchDto) {
+    const { page = 1, limit = 20 } = dto;
+    const offset = (page - 1) * limit;
+
+    const cacheKey = `entries_list:${page}:${limit}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) return cached;
+
+    const query = this.lemmaRepo
+      .createQueryBuilder('lemma')
+      .leftJoinAndSelect('lemma.senses', 'sense')
+      .leftJoinAndSelect('sense.examples', 'example')
+      .andWhere('lemma.is_hidden = false')
+      .andWhere('lemma.is_verified = true')
+      .andWhere('lemma.language = :lang', { lang: CANONICAL_LANGUAGE })
+      .orderBy('lemma.word', 'ASC')
+      .skip(offset)
+      .take(limit);
+
+    const results = await query.getMany();
+    await this.cacheManager.set(cacheKey, results, 3600);
+
+    return results;
+  }
+
   async search(dto: SearchDto) {
     const { q, page = 1, limit = 20 } = dto;
     const offset = (page - 1) * limit;

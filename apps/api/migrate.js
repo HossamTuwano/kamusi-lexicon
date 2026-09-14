@@ -1,21 +1,19 @@
 const { Client } = require('pg');
 const bcrypt = require('bcrypt');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 async function runMigrations() {
-  const connectionString = process.env.DATABASE_URL || process.env.DB_URL;
-  if (!connectionString) {
-    console.error('Error: DATABASE_URL not found');
-    process.exit(1);
-  }
-
-  const useSsl =
-    connectionString.includes('render.com') ||
-    process.env.NODE_ENV === 'production' ||
-    process.env.DB_SSL === 'true';
-
   const client = new Client({
-    connectionString,
-    ssl: useSsl ? { rejectUnauthorized: false } : false,
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    user: process.env.DB_USER || 'admin',
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME || 'kamusi',
+    ssl:
+      process.env.NODE_ENV === 'production' || process.env.DB_SSL === 'true'
+        ? { rejectUnauthorized: false }
+        : false,
   });
 
   try {
@@ -27,14 +25,16 @@ async function runMigrations() {
 
     // 2. Swahili POS Enum
     const enumCheck = await client.query(
-      "SELECT enumlabel FROM pg_enum JOIN pg_type ON pg_enum.enumtypid = pg_type.oid WHERE typname = 'lemmas_part_of_speech_enum';"
+      "SELECT enumlabel FROM pg_enum JOIN pg_type ON pg_enum.enumtypid = pg_type.oid WHERE typname = 'lemmas_part_of_speech_enum';",
     );
     const existingLabels = enumCheck.rows.map((r) => r.enumlabel);
     const needsEnumReset =
       existingLabels.length > 0 && !existingLabels.includes('N');
 
     if (needsEnumReset) {
-      console.log('Converting legacy POS enum to Swahili codes (N, W, V, T, E, U, I, H)...');
+      console.log(
+        'Converting legacy POS enum to Swahili codes (N, W, V, T, E, U, I, H)...',
+      );
       await client.query(`
         DO $$ BEGIN
           IF EXISTS (
@@ -194,7 +194,7 @@ async function runMigrations() {
 
     const existingAdmin = await client.query(
       'SELECT id, username, role FROM users WHERE username = $1;',
-      [adminUsername]
+      [adminUsername],
     );
 
     let adminId;
@@ -203,10 +203,10 @@ async function runMigrations() {
       // deployment with a guessable admin account.
       if (!adminPassword) {
         console.error(
-          `Cannot create super admin "${adminUsername}": ADMIN_PASSWORD is not set.`
+          `Cannot create super admin "${adminUsername}": ADMIN_PASSWORD is not set.`,
         );
         console.error(
-          'Set ADMIN_PASSWORD in the environment (apps/api/.env locally, or the host dashboard in production) and run again.'
+          'Set ADMIN_PASSWORD in the environment (apps/api/.env locally, or the host dashboard in production) and run again.',
         );
         process.exit(1);
       }
@@ -216,68 +216,226 @@ async function runMigrations() {
         `INSERT INTO users (username, email, password_hash, reputation_score, role)
          VALUES ($1, $2, $3, 100, 'admin')
          RETURNING id;`,
-        [adminUsername, adminEmail, passwordHash]
+        [adminUsername, adminEmail, passwordHash],
       );
       adminId = inserted.rows[0].id;
-      console.log(`Super admin user "${adminUsername}" created with ID ${adminId}.`);
+      console.log(
+        `Super admin user "${adminUsername}" created with ID ${adminId}.`,
+      );
     } else {
       adminId = existingAdmin.rows[0].id;
-      console.log(`Admin user "${adminUsername}" already exists (ID ${adminId}).`);
+      console.log(
+        `Admin user "${adminUsername}" already exists (ID ${adminId}).`,
+      );
     }
 
     // 12. Baseline Seed (if no lemmas exist)
     const lemmaCount = await client.query('SELECT count(*) FROM lemmas;');
     if (parseInt(lemmaCount.rows[0].count, 10) === 0) {
-      console.log('Seeding initial baseline entry ("gari")...');
-      const lemmaRes = await client.query(
-        `INSERT INTO lemmas (
-          word, language, part_of_speech, plural, synonyms, antonyms, derived_words,
-          dialect, source, is_verified, vote_count, creator_id, version
-        ) VALUES (
-          'gari', 'sw', 'N', 'magari', ARRAY['motokaa'], ARRAY[]::text[], ARRAY['dereva', 'garini'],
-          'Kiswahili sanifu', 'seed', true, 1, $1, 1
-        ) RETURNING id;`,
-        [adminId]
-      );
-      const lemmaId = lemmaRes.rows[0].id;
+      console.log('Seeding initial baseline entries...');
 
-      const sense1Res = await client.query(
-        `INSERT INTO senses (definition, usage_note, lemma_id)
-         VALUES ('Chombo cha usafiri kinachotumika kubeba watu au mizigo.', 'Hutumika mara nyingi kwa magari ya kisasa.', $1)
-         RETURNING id;`,
-        [lemmaId]
-      );
-      const sense1Id = sense1Res.rows[0].id;
+      const seedWords = [
+        {
+          word: 'gari',
+          pos: 'N',
+          plural: 'magari',
+          synonyms: ['motokaa'],
+          antonyms: [],
+          derived: ['dereva', 'garini'],
+          senses: [
+            {
+              def: 'Chombo cha usafiri kinachotumika kubeba watu au mizigo.',
+              note: 'Hutumika mara nyingi kwa magari ya kisasa.',
+              ex: ['Nimenunua gari jipya.'],
+            },
+            {
+              def: 'Kaa au gari la kubebea mizigo kwa kutumia wanyama.',
+              note: 'Matumizi ya kimila au maalum.',
+              ex: ['Gari la kubeba mizigo limefika.'],
+            },
+          ],
+        },
+        {
+          word: 'kitabu',
+          pos: 'N',
+          plural: 'vitabu',
+          synonyms: [],
+          antonyms: [],
+          derived: ['maktaba'],
+          senses: [
+            {
+              def: 'Karatasi zilizounganishwa pamoja zenye maandishi.',
+              note: null,
+              ex: ['Nasoma kitabu cha historia.'],
+            },
+          ],
+        },
+        {
+          word: 'shule',
+          pos: 'N',
+          plural: 'shule',
+          synonyms: [],
+          antonyms: [],
+          derived: ['mwanafunzi', 'mwalimu'],
+          senses: [
+            {
+              def: 'Mahali pa kupata elimu.',
+              note: null,
+              ex: ['Watoto wanaenda shuleni asubuhi.'],
+            },
+          ],
+        },
+        {
+          word: 'nyumba',
+          pos: 'N',
+          plural: 'nyumba',
+          synonyms: ['makazi'],
+          antonyms: [],
+          derived: ['mjenzi'],
+          senses: [
+            {
+              def: 'Jengo la kuishi.',
+              note: null,
+              ex: ['Nyumba hii ni nzuri sana.'],
+            },
+          ],
+        },
+        {
+          word: 'mtu',
+          pos: 'N',
+          plural: 'watu',
+          synonyms: ['binadamu'],
+          antonyms: [],
+          derived: [],
+          senses: [
+            {
+              def: 'Kiumbe mwenye akili na uwezo wa kuzungumza.',
+              note: null,
+              ex: ['Yule mtu ni mkarimu.'],
+            },
+          ],
+        },
+        {
+          word: 'kula',
+          pos: 'V',
+          plural: null,
+          synonyms: [],
+          antonyms: ['fuma'],
+          derived: ['chakula'],
+          senses: [
+            {
+              def: 'Kuweka chakula kinywani na kumeza.',
+              note: null,
+              ex: ['Tunakula chakula cha mchana.'],
+            },
+          ],
+        },
+        {
+          word: 'soma',
+          pos: 'V',
+          plural: null,
+          synonyms: [],
+          antonyms: [],
+          derived: ['msomaji'],
+          senses: [
+            {
+              def: 'Kutambua maandishi na kuelewa maana yake.',
+              note: null,
+              ex: ['Anapenda kusoma vitabu vya sayansi.'],
+            },
+          ],
+        },
+        {
+          word: 'nzuri',
+          pos: 'T',
+          plural: null,
+          synonyms: ['safi', 'rembo'],
+          antonyms: ['mbaya'],
+          derived: [],
+          senses: [
+            {
+              def: 'Kitu chenye sifa nzuri au kinachovutia.',
+              note: null,
+              ex: ['Siku ya leo ni nzuri sana.'],
+            },
+          ],
+        },
+        {
+          word: 'haraka',
+          pos: 'T',
+          plural: null,
+          synonyms: ['upesi'],
+          antonyms: ['polepole'],
+          derived: [],
+          senses: [
+            {
+              def: 'Hali ya kufanya jambo kwa kasi kubwa.',
+              note: null,
+              ex: ['Tafadhali fanya kazi hii kwa haraka.'],
+            },
+          ],
+        },
+        {
+          word: 'amsha',
+          pos: 'V',
+          plural: null,
+          synonyms: [],
+          antonyms: ['laza'],
+          derived: [],
+          senses: [
+            {
+              def: 'Kufanya mtu aache kulala.',
+              note: null,
+              ex: ['Niamshie asubuhi mapema.'],
+            },
+          ],
+        },
+      ];
 
-      const sense2Res = await client.query(
-        `INSERT INTO senses (definition, usage_note, lemma_id)
-         VALUES ('Kaa au gari la kubebea mizigo kwa kutumia wanyama.', 'Matumizi ya kimila au maalum.', $1)
-         RETURNING id;`,
-        [lemmaId]
-      );
-      const sense2Id = sense2Res.rows[0].id;
+      for (const w of seedWords) {
+        const lemmaRes = await client.query(
+          `INSERT INTO lemmas (
+            word, language, part_of_speech, plural, synonyms, antonyms, derived_words,
+            dialect, source, is_verified, vote_count, creator_id, version
+          ) VALUES (
+            $1, 'sw', $2, $3, $4, $5, $6,
+            'Kiswahili sanifu', 'seed', true, 1, $7, 1
+          ) RETURNING id;`,
+          [w.word, w.pos, w.plural, w.synonyms, w.antonyms, w.derived, adminId],
+        );
+        const lemmaId = lemmaRes.rows[0].id;
 
-      await client.query(
-        `INSERT INTO examples (sentence, note, sense_id)
-         VALUES ('Nimenunua gari jipya.', 'Matumizi ya kawaida', $1);`,
-        [sense1Id]
-      );
+        for (const s of w.senses) {
+          const senseRes = await client.query(
+            `INSERT INTO senses (definition, usage_note, lemma_id)
+             VALUES ($1, $2, $3)
+             RETURNING id;`,
+            [s.def, s.note, lemmaId],
+          );
+          const senseId = senseRes.rows[0].id;
 
-      await client.query(
-        `INSERT INTO examples (sentence, note, sense_id)
-         VALUES ('Gari la kubeba mizigo limefika.', 'Matumizi ya muktadha', $1);`,
-        [sense2Id]
-      );
+          if (s.ex) {
+            for (const exText of s.ex) {
+              await client.query(
+                `INSERT INTO examples (sentence, note, sense_id)
+                 VALUES ($1, null, $2);`,
+                [exText, senseId],
+              );
+            }
+          }
+        }
 
-      await client.query(
-        `INSERT INTO lemma_contributions (lemma_id, user_id, action, status, note)
-         VALUES ($1, $2, 'created', 'approved', 'Initial baseline seed');`,
-        [lemmaId, adminId]
-      );
-
-      console.log('Baseline entry ("gari") seeded successfully.');
+        await client.query(
+          `INSERT INTO lemma_contributions (lemma_id, user_id, action, status, note)
+           VALUES ($1, $2, 'created', 'approved', 'Initial baseline seed');`,
+          [lemmaId, adminId],
+        );
+      }
+      console.log(`Successfully seeded ${seedWords.length} baseline entries.`);
     } else {
-      console.log(`Database already has ${lemmaCount.rows[0].count} lemmas; skipping baseline seed.`);
+      console.log(
+        `Database already has ${lemmaCount.rows[0].count} lemmas; skipping baseline seed.`,
+      );
     }
 
     console.log('Migration completed successfully.');

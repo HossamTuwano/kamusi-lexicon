@@ -1,34 +1,57 @@
-import { useEffect, useState, SyntheticEvent } from 'react';
+import { useEffect, useState, SyntheticEvent, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PartOfSpeechLabels } from '@kamusi/core';
 import { api, type ApiLemma } from '../lib/api';
+import { useSearch } from '../lib/search';
 
 export function HomePage() {
+  const { inputValue, setInputValue, isSticky, setIsSticky } = useSearch();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryFromUrl = searchParams.get('q') || '';
   
-  const [inputValue, setInputValue] = useState(queryFromUrl);
   const [results, setResults] = useState<ApiLemma[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Sync input value if URL changes externally (e.g. browser back button)
+  const heroRef = useRef<HTMLDivElement>(null);
+
+  // Sync input value if URL changes externally
   useEffect(() => {
     setInputValue(queryFromUrl);
-  }, [queryFromUrl]);
+  }, [queryFromUrl, setInputValue]);
 
-  // Trigger search when the URL query changes
+  // IntersectionObserver to detect when hero leaves the viewport
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsSticky(!entry.isIntersecting);
+      },
+      {
+        threshold: 0,
+        rootMargin: '-80px 0px 0px 0px',
+      }
+    );
+
+    if (heroRef.current) {
+      observer.observe(heroRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [setIsSticky]);
+
+  // Trigger search or load initial list when the URL query changes
   useEffect(() => {
     async function performSearch() {
-      if (!queryFromUrl) {
-        setResults([]);
-        return;
-      }
       setLoading(true);
       setError(null);
       try {
-        const data = await api.search(queryFromUrl);
-        setResults(data);
+        if (!queryFromUrl) {
+          const data = await api.list();
+          setResults(data);
+        } else {
+          const data = await api.search(queryFromUrl);
+          setResults(data);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Hitilafu');
         setResults(null);
@@ -52,7 +75,8 @@ export function HomePage() {
 
   return (
     <section>
-      <div className="hero">
+      <div className="hero" ref={heroRef}>
+
         <h1>Kamusi</h1>
         <p>
           Kamusi ya Kiswahili inayoeleza maana, mifano, na
@@ -69,6 +93,11 @@ export function HomePage() {
             {loading ? 'Inatafuta…' : 'Tafuta'}
           </button>
         </form>
+      </div>
+
+      {/* Debugging label for CP1 Proof */}
+      <div style={{ position: 'fixed', top: 10, right: 10, background: 'black', color: 'white', padding: '5px', zIndex: 1000, fontSize: '12px' }}>
+        Mode: {isSticky ? 'Sticky' : 'Standard'}
       </div>
 
       {error && <p className="error">{error}</p>}

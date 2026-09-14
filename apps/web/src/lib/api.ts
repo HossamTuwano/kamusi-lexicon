@@ -112,6 +112,10 @@ async function request<T>(
 }
 
 export const api = {
+  list(dto: { page?: number; limit?: number } = {}) {
+    const qs = new URLSearchParams(dto as any).toString();
+    return request<ApiLemma[]>(`/entries/list${qs ? `?${qs}` : ''}`);
+  },
   search(q: string) {
     return request<ApiLemma[]>(`/entries/search?q=${encodeURIComponent(q)}`);
   },
