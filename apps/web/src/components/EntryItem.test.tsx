@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntryItem } from './EntryItem';
 import { ApiLemma } from '../lib/api';

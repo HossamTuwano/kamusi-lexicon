@@ -3,6 +3,18 @@
 Read this before changing code. Then read `CONSTITUTION.md` and `VISION.md`.
 If a feature conflicts with the Constitution, the Constitution wins.
 
+## Session note (2026-09-14)
+
+1. Fixed the web production build scope by excluding `src/**/*.test.ts` and
+   `src/**/*.test.tsx` from `apps/web/tsconfig.json`; the deployable build no
+   longer type-checks test-only files.
+2. Removed an unused import in `apps/web/src/components/Shell.tsx` and marked
+   the intentionally unused search event parameter in
+   `apps/web/src/lib/search.tsx` with the underscore convention.
+3. Verified the complete monorepo build with `npm run build:all`; core,
+   database, API, web, and admin all compile and bundle successfully.
+4. Existing unrelated worktree changes were preserved.
+
 ---
 
 ## Was the previous pickup material enough?

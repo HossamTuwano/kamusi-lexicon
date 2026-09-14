@@ -3,6 +3,26 @@
 Decision log for continuity across sessions and models.
 Append newest entries at the top. Prefer evidence over persuasion.
 
+## 2026-09-14 — Web production build scope and strict TypeScript cleanup
+
+**Context:** `npm run build:all` stopped in `apps/web` because the production
+TypeScript project included `EntryItem.test.tsx`, while the test file had
+missing test imports and test-only types. The runtime build also had one unused
+import and one intentionally unused event parameter rejected by strict
+compiler settings.
+
+**Decisions / changes:**
+1. Excluded `src/**/*.test.ts` and `src/**/*.test.tsx` from the web production
+   TypeScript project. Test files remain source files but are not bundled into
+   the deployable application.
+2. Removed the unused `PartOfSpeechLabels` import from `Shell.tsx`.
+3. Renamed the intentionally unused search handler parameter to `_e` so the
+   existing no-op API remains type-compatible without disabling
+   `noUnusedParameters`.
+
+**Verification:** `npm run build:all` passed for core, database, API, web, and
+admin. The web bundle completed successfully with Vite.
+
 ## 2026-09-08 — Pre-pilot hardening: read limits, search index, moderation queue
 
 **Context:** Preparing to put Phase 1 in front of real users. An audit of the

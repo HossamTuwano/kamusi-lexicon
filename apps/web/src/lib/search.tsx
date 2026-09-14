@@ -22,7 +22,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [suggestions, setSuggestions] = useState<ApiLemma[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  const onSearch = (e: React.SyntheticEvent<HTMLFormElement>) => {
+  const onSearch = (_e: React.SyntheticEvent<HTMLFormElement>) => {
     // Handled in Page components (e.g. HomePage)
   };
 

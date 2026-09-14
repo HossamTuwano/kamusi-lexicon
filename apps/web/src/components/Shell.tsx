@@ -2,7 +2,6 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useSearch } from '../lib/search';
 import { useEffect, useRef } from 'react';
-import { PartOfSpeechLabels } from '@kamusi/core';
 
 export function Shell() {
   const { user, logout } = useAuth();
