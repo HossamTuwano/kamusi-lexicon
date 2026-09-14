@@ -1,13 +1,13 @@
-# 🧪 Manual Testing Guide — Kamusi-Lexicon Phase 1 API
+# Manual Testing Guide — Kamusi-Lexicon Phase 1 API
 
-## ✅ Status
-**ALL 17 E2E TESTS PASS** ✓ (7 unit tests + verified end-to-end)
+## Status
+**ALL 17 E2E TESTS PASS** (7 unit tests + verified end-to-end)
 
 Fix applied: ValidationPipe nested DTO transformation (Aug 12, 2026)
 
 ---
 
-## 📋 Quick Start (Local Testing)
+## Quick Start (Local Testing)
 
 ### Prerequisites
 - Docker (postgres + redis)
@@ -43,7 +43,7 @@ npm run test:e2e
 
 ---
 
-## 🔍 Manual Test Scenarios (Browser or curl)
+## Manual Test Scenarios (Browser or curl)
 
 ### Scenario 1: Search (No Auth Required)
 ```bash
@@ -141,24 +141,24 @@ Expected: 200 OK with isVerified = true
 
 ---
 
-## 🎯 Key API Routes (All Tested)
+## Key API Routes (All Tested)
 
 | Method | Path | Auth | Status |
 |--------|------|------|--------|
-| GET | `/api/entries/search?q=` | no | ✅ Works |
-| GET | `/api/entries/:id` | no | ✅ Works |
-| POST | `/api/entries` | yes | ✅ Fixed (nested DTO) |
-| PATCH | `/api/entries/:id` | yes | ✅ Works |
-| DELETE | `/api/entries/:id` | yes | ✅ Works |
-| POST | `/api/entries/:id/moderate?action=verify\|hide\|restore` | moderator | ✅ Works |
-| POST | `/api/entries/:id/vote` | yes | ✅ Works |
-| DELETE | `/api/entries/:id/vote` | yes | ✅ Works |
-| POST | `/api/auth/register` | no | ✅ Works |
-| POST | `/api/auth/login` | no | ✅ Works |
+| GET | `/api/entries/search?q=` | no | Works |
+| GET | `/api/entries/:id` | no | Works |
+| POST | `/api/entries` | yes | Fixed (nested DTO) |
+| PATCH | `/api/entries/:id` | yes | Works |
+| DELETE | `/api/entries/:id` | yes | Works |
+| POST | `/api/entries/:id/moderate?action=verify\|hide\|restore` | moderator | Works |
+| POST | `/api/entries/:id/vote` | yes | Works |
+| DELETE | `/api/entries/:id/vote` | yes | Works |
+| POST | `/api/auth/register` | no | Works |
+| POST | `/api/auth/login` | no | Works |
 
 ---
 
-## 🧠 Technical Details
+## Technical Details
 
 ### The Fix (Aug 12)
 **Problem:** `forbidNonWhitelisted: true` on ValidationPipe rejected nested DTO properties (e.g., `senses.0.definition`) before `class-transformer` could convert plain objects to `SenseDto` class instances.
@@ -187,7 +187,7 @@ All JSON responses are **camelCase** (matches `@kamusi/core`):
 
 ---
 
-## ✅ Verification Checklist
+## Verification Checklist
 
 - [x] Search returns camelCase JSON
 - [x] Create accepts camelCase input
@@ -202,7 +202,7 @@ All JSON responses are **camelCase** (matches `@kamusi/core`):
 
 ---
 
-## 🚨 Known Limitations (Phase 1)
+## Known Limitations (Phase 1)
 - Swahili language enforced (no translations)
 - Definition field required (no empty lemmas)
 - Unique constraint on (word, partOfSpeech) — same word OK if different POS
@@ -210,7 +210,7 @@ All JSON responses are **camelCase** (matches `@kamusi/core`):
 
 ---
 
-## 📞 Troubleshooting
+## Troubleshooting
 
 ### "CORS error" on browser requests
 → Check `CORS_ORIGINS` env var includes your port (default: 5173, 5174)
@@ -226,11 +226,10 @@ All JSON responses are **camelCase** (matches `@kamusi/core`):
 
 ---
 
-## 📊 Test Coverage (Phase 1)
+## Test Coverage (Phase 1)
 - **Unit tests:** 29/29 passing
 - **E2E tests:** 17/17 passing
   - 3 read scenarios (search, get by ID, with history)
   - 7 create/update/delete/moderate scenarios
   - 3 vote scenarios
   - 4 auth/authorization scenarios
-

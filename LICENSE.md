@@ -1,12 +1,12 @@
 # License
 
-## 📄 Software License
+## Software License
 
 The source code of the Kamusi project is licensed under the **MIT License**.
 
 This is a permissive license that allows anyone to use, copy, modify, and distribute the software, provided that the original copyright notice and this permission notice are included in all copies or substantial portions of the software.
 
-## 📚 Content License (Lexical Data)
+## Content License (Lexical Data)
 
 The content of this lexicon (words, definitions, examples, and other linguistic data) is licensed under the **Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)**.
 

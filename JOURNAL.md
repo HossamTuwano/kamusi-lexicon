@@ -395,16 +395,16 @@ Verified end-to-end: contributor 403 on listing, admin sees queue, approve merge
    - Added helpful warnings for non-moderator accounts
 
 **Features now working:**
-- ✅ List unverified lemmas in grid view
-- ✅ Verify button (calls POST /entries/:id/moderate with action=verify)
-- ✅ Hide button (calls POST /entries/:id/moderate with action=hide)
-- ✅ Role-based access control (visibly disabled for non-moderators)
-- ✅ Auto-refresh on successful moderation (React Query invalidation)
-- ✅ Loading/error states with user-friendly messages
+- [x] List unverified lemmas in grid view
+- [x] Verify button (calls POST /entries/:id/moderate with action=verify)
+- [x] Hide button (calls POST /entries/:id/moderate with action=hide)
+- [x] Role-based access control (visibly disabled for non-moderators)
+- [x] Auto-refresh on successful moderation (React Query invalidation)
+- [x] Loading/error states with user-friendly messages
 
 **Test result:**
-- ✅ All 17 e2e tests still passing (no regressions)
-- ✅ Moderation endpoint tested end-to-end in e2e suite
+- [x] All 17 e2e tests still passing (no regressions)
+- [x] Moderation endpoint tested end-to-end in e2e suite
 
 **Scope for future:**
 - Restore button for explicitly viewing/restoring hidden entries (low priority — hidden entries can be restored via API if needed)
@@ -436,9 +436,9 @@ Verified end-to-end: contributor 403 on listing, admin sees queue, approve merge
 - No code logic changed; only validation/transform pipeline order
 
 **Outcome:**
-- ✅ All 17 e2e tests now pass (was 7/17)
-- ✅ All 29 unit tests still pass
-- ✅ Phase 1 compliance verified end-to-end (search, create, update, delete, moderate, vote)
+- [x] All 17 e2e tests now pass (was 7/17)
+- [x] All 29 unit tests still pass
+- [x] Phase 1 compliance verified end-to-end (search, create, update, delete, moderate, vote)
 
 ---
 
@@ -463,9 +463,9 @@ Verified end-to-end: contributor 403 on listing, admin sees queue, approve merge
 - No code logic changed; only validation/transform pipeline order
 
 **Outcome:**
-- ✅ All 17 e2e tests now pass (was 7/17)
-- ✅ All 29 unit tests still pass
-- ✅ Phase 1 compliance verified end-to-end (search, create, update, delete, moderate, vote)
+- [x] All 17 e2e tests now pass (was 7/17)
+- [x] All 29 unit tests still pass
+- [x] Phase 1 compliance verified end-to-end (search, create, update, delete, moderate, vote)
 
 ---
 

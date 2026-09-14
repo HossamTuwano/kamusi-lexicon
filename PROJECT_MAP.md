@@ -1,6 +1,6 @@
-# 🧠 PROJECT MAP: kamusi-lexicon
+# PROJECT MAP: kamusi-lexicon
 
-## 🚩 THE DIRECTIVE
+## THE DIRECTIVE
 
 Lifelong mission: professional, open-source lexical infrastructure for Swahili.
 **Primary goal: monolingual Swahili → Swahili Kamusi (Phase 1).**
@@ -15,7 +15,7 @@ Lifelong mission: professional, open-source lexical infrastructure for Swahili.
 
 ---
 
-## 🏗️ ARCHITECTURE (Monorepo)
+## ARCHITECTURE (Monorepo)
 
 NPM Workspaces.
 
@@ -32,7 +32,7 @@ NPM Workspaces.
 
 ---
 
-## 📍 CURRENT STATUS (August 12, 2026)
+## CURRENT STATUS (August 12, 2026)
 
 - **Phase:** 1 (Swahili → Swahili)
 - **Data model:** Lemma → Senses → Examples, plus synonyms/antonyms/derived words/dialect/source
@@ -43,7 +43,7 @@ NPM Workspaces.
 
 ---
 
-## 📝 HANDOVER
+## HANDOVER
 
 Start at `HANDOVER.md`. Maintain `JOURNAL.md` after every major decision.
 

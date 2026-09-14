@@ -1,13 +1,13 @@
-# 🌀 THE HELIX METHOD: Implementation Standard
+# THE HELIX METHOD: Implementation Standard
 
 This document defines the mandatory workflow for all AI agents working on the Kamusi Lexicon project. The Helix method is designed to prevent "LLM Drift" and technical debt by replacing one-shot implementations with a gradual, proof-gated loop.
 
-## 🚩 THE MANDATE
+## THE MANDATE
 **No one-shot features.** Large tasks must be decomposed into atomic checkpoints. A checkpoint is only "Done" when it is proven, critiqued, and approved.
 
 ---
 
-## 🛠️ THE WORKFLOW
+## THE WORKFLOW
 
 ### Phase 1: Slicing (The Map)
 Before writing any code, the agent must propose a **Checkpoint Map**. 
@@ -31,7 +31,7 @@ To avoid the "Simulator Bottleneck," proofs must be generated in order of speed.
 2. **Automated Proof**: The test/script results from the fastest applicable tier.
 3. **Evidence**: The raw terminal output of the passing test.
 
-**🛑 GATE: If the automated proof is missing or failing, the checkpoint cannot proceed.**
+**GATE: If the automated proof is missing or failing, the checkpoint cannot proceed.**
 
 ### Phase 3: The Adversarial Gate (Review)
 Before presenting the bundle to the human, the agent must conduct an internal adversarial review:
@@ -51,7 +51,7 @@ Failures and rejections are the primary source of project intelligence.
 
 ---
 
-## ⚠️ INVARIANTS
+## INVARIANTS
 - **No "Mental Notes"**: Lessons must be written to `JOURNAL.md`.
 - **No Skipping Gates**: Proofs cannot be "assumed"; they must be evidenced.
 - **Constitution Wins**: Any implementation that violates `CONSTITUTION.md` is automatically rejected by the Adversarial Gate.

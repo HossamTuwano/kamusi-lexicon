@@ -78,7 +78,7 @@ Instead, display a **verified icon/badge** next to the word or entry.
 Example:
 
 ```text
-gari  ✓
+gari  [verified]
 ```
 
 or an appropriate verified icon.

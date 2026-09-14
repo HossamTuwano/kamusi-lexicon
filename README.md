@@ -2,13 +2,13 @@
 
 A professional, open-source lexical infrastructure for the Swahili language.
 
-## 🎯 The Mission
+## The Mission
 
 The goal of this project is to build a high-quality, digital *Kamusi* (dictionary) for Swahili. Unlike many existing resources, this project is **monolingual first**. We believe that the foundation of a strong language infrastructure is a system where Swahili explains Swahili.
 
 Our primary objective is to create a structured, machine-readable lexical database that serves as a source of truth for meanings, grammatical usage, and examples, entirely in Swahili.
 
-## 🛠️ Project Architecture
+## Project Architecture
 
 This is a monorepo designed for scalability and integration.
 
@@ -17,7 +17,7 @@ This is a monorepo designed for scalability and integration.
 - **`packages/core`**: The canonical data models and types used across the entire ecosystem.
 - **`packages/database`**: Schema definitions and SQL bootstrap scripts.
 
-## 📜 The Constitution
+## The Constitution
 
 This project is guided by a strict **Project Constitution** located at `apps/api/CONSTITUTION.md`. 
 
@@ -26,7 +26,7 @@ The Constitution ensures that the project does not drift into becoming a simple 
 2. **Phase-based Growth**: We focus on the monolingual Swahili $\rightarrow$ Swahili experience (Phase 1) before expanding into translations or NLP tools.
 3. **Precision over Hype**: We prioritize engineering clarity and lexical accuracy over marketing language.
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions from linguists, software engineers, and Swahili speakers. This is a community-maintained effort.
 
@@ -44,7 +44,7 @@ We welcome contributions from linguists, software engineers, and Swahili speaker
 - **Evidence-Based**: Provide sources or usage examples for new lexical entries.
 - **Technical Quality**: All code must be typed, tested, and follow the project's architectural patterns.
 
-## 🗺️ Roadmap
+## Roadmap
 
 - [x] **Phase 1**: Monolingual Swahili $\rightarrow$ Swahili (Core search, contribution, and moderation).
 - [ ] **Phase 2**: Adding optional translations (Sw $\leftrightarrow$ En, Sw $\leftrightarrow$ De, etc.).
