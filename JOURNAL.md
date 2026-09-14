@@ -3,6 +3,25 @@
 Decision log for continuity across sessions and models.
 Append newest entries at the top. Prefer evidence over persuasion.
 
+## 2026-09-14 — Restored web component test coverage
+
+**Context:** `apps/web/src/components/EntryItem.test.tsx` showed TypeScript
+errors because its Testing Library imports had been removed, the web workspace
+had no test toolchain, and its fixture no longer matched the current API
+types. The test also lacked DOM cleanup between cases.
+
+**Decisions / changes:**
+1. Added Vitest, Testing Library, jsdom, and the required DOM matcher
+   dependencies as web development dependencies.
+2. Added a web Vitest configuration using the jsdom environment and a setup
+   file that registers jest-dom matchers and cleans up after each test.
+3. Added the `apps/web` test script.
+4. Updated the `EntryItem` fixture and assertions to match the current
+   `ApiLemma` contract.
+
+**Verification:** The web test suite passes 4/4 tests and the production web
+build passes.
+
 ## 2026-09-14 — Removed manual migration from production startup
 
 **Context:** The deployed API failed before binding its port because the Render

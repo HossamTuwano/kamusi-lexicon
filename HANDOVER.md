@@ -3,6 +3,15 @@
 Read this before changing code. Then read `CONSTITUTION.md` and `VISION.md`.
 If a feature conflicts with the Constitution, the Constitution wins.
 
+## Session note (2026-09-14 — web component tests)
+
+1. Restored `EntryItem.test.tsx` imports and aligned its fixture with the
+   current web API types.
+2. Added the web Vitest/jsdom/Testing Library toolchain and an `apps/web`
+   test script.
+3. Added automatic DOM cleanup and jest-dom matcher setup.
+4. Verified 4/4 web tests pass and the web production build succeeds.
+
 ## Session note (2026-09-14 — production startup)
 
 1. Removed automatic `migrate.js` execution from `apps/api` `start:prod`.
