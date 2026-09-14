@@ -3,6 +3,26 @@
 Decision log for continuity across sessions and models.
 Append newest entries at the top. Prefer evidence over persuasion.
 
+## 2026-09-14 — Removed manual migration from production startup
+
+**Context:** The deployed API failed before binding its port because the Render
+start command invoked `apps/api/migrate.js`, which fell back to
+`localhost:5432` when its legacy `DB_*` variables were not present. The
+production database was already initialized, and the script is intended for
+deliberate bootstrap/seed operations rather than every application restart.
+
+**Decision / changes:**
+1. `apps/api` `start:prod` now runs only `node dist/main.js`.
+2. The existing `migrate` script remains available for intentional manual
+   database bootstrap or repair.
+3. API documentation now distinguishes manual migration from production
+   startup.
+4. The Render Start Command must be `npm run api:prod`; it must not prefix
+   startup with `node apps/api/migrate.js &&`.
+
+**Verification:** The repository production start contract no longer executes
+the manual migration script.
+
 ## 2026-09-14 — Web production build scope and strict TypeScript cleanup
 
 **Context:** `npm run build:all` stopped in `apps/web` because the production

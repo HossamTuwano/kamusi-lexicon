@@ -3,6 +3,16 @@
 Read this before changing code. Then read `CONSTITUTION.md` and `VISION.md`.
 If a feature conflicts with the Constitution, the Constitution wins.
 
+## Session note (2026-09-14 — production startup)
+
+1. Removed automatic `migrate.js` execution from `apps/api` `start:prod`.
+2. Production startup now runs only `node dist/main.js` against the existing
+   database.
+3. `npm run migrate --workspace=api` remains the deliberate manual bootstrap
+   and repair command.
+4. Render's Start Command must be `npm run api:prod`, not
+   `node apps/api/migrate.js && npm run api:prod`.
+
 ## Session note (2026-09-14)
 
 1. Fixed the web production build scope by excluding `src/**/*.test.ts` and

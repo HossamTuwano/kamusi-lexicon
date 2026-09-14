@@ -12,6 +12,18 @@ JSON wire format is **camelCase** (aligned with `@kamusi/core`).
 4. From root: `npm run api:dev`
 5. Docs: `http://localhost:3001/docs`
 
+Manual database bootstrap or seed:
+
+```bash
+npm run migrate --workspace=api
+```
+
+Production startup only launches the compiled API:
+
+```bash
+npm run api:prod
+```
+
 ## Env
 
 - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
@@ -28,6 +40,8 @@ PostgreSQL with `pg_trgm`.
 - Shared/prod: `DB_SYNC=false` and apply either:
   - `packages/database/sql/001_phase1_bootstrap.sql`, or
   - TypeORM migration `src/db/migrations/1754490000000-phase1-init.ts` via CLI against a built/dist DataSource
+- Do not run `migrate.js` automatically as part of production startup. Run it
+  deliberately when bootstrapping or repairing a database.
 
 Do not glob `.ts` migrations into Nest at runtime (breaks Vitest/Node ESM interop).
 
