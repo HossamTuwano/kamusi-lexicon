@@ -3,6 +3,18 @@
 Decision log for continuity across sessions and models.
 Append newest entries at the top. Prefer evidence over persuasion.
 
+## 2026-09-15 — Premium About-page direction for the Swahili-first mission
+
+**Context:** The About page had placeholder content and did not yet express the product's real value proposition, which is not only a dictionary product but a community-built Swahili lexical infrastructure for education, language quality, and contribution.
+
+**Decisions / changes:**
+1. Replaced the placeholder with a structured Swahili-first About page using a premium editorial layout.
+2. Framed the content around the real user journey: problem, purpose, how it works, how to contribute, and a clear CTA.
+3. Kept the initial UI copy intentionally neutral and reusable so the final wording can be refined later without redesign churn.
+4. Added stronger visual hierarchy, softer card styling, and a cleaner premium spacing system for desktop and mobile.
+
+**Verification:** Web production build succeeded after the UI pass (`npm run build --workspace=web`).
+
 ## 2026-09-14 — Restored web component test coverage
 
 **Context:** `apps/web/src/components/EntryItem.test.tsx` showed TypeScript
@@ -552,3 +564,30 @@ Verified end-to-end: contributor 403 on listing, admin sees queue, approve merge
 ## 2026-08-05 — Monorepo conversion (prior)
 
 Converted single API repo → npm workspaces monorepo (`apps/*`, `packages/*`) to support longevity. Canonical model introduced under `packages/core`.
+
+## 2026-09-14 — Responsive public navigation
+
+**Context:** The public web navbar had excessive horizontal spacing, and mobile users needed compact icon-only controls.
+
+**Decisions / changes:**
+
+1. Added inline SVG icons while retaining full text labels on desktop.
+2. Hid brand text, navigation labels, and username text below 640px while preserving accessible `aria-label` and `title` attributes.
+3. Reduced mobile shell width, gaps, and control dimensions so navigation sits closer to the viewport edges.
+4. Added shrink-safe flex rules for the sticky search at narrow widths.
+5. Centralized the sticky header height in `--topbar-height` so mobile content offset matches the fixed header.
+
+**Proof:** `npm run test --workspace=web` passes 4 tests, and `npm run build --workspace=web` succeeds.
+
+## 2026-09-14 — Mobile home search layout
+
+**Context:** At an iPhone 12 viewport (375px wide), the home hero stacked the title, description, search input, and button with excessive vertical space.
+
+**Decisions / changes:**
+
+1. Show the home search input and icon in the mobile navbar immediately, before the intro content.
+2. Hide the duplicate hero search form on mobile while retaining it on desktop.
+3. Reduce mobile hero title size to 2rem and tighten description and section spacing.
+4. Wire the navbar search to the existing `/?q=` search flow for both Enter and icon submission.
+
+**Proof:** Web tests pass 4/4, the production web build succeeds, and the final adversarial review found no significant issues.

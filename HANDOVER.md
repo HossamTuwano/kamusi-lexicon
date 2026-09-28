@@ -3,6 +3,16 @@
 Read this before changing code. Then read `CONSTITUTION.md` and `VISION.md`.
 If a feature conflicts with the Constitution, the Constitution wins.
 
+## Session note (2026-09-15 — About page premium UI pass)
+
+1. Replaced the placeholder About page with a premium Swahili-first
+   sectioned layout for the mission, problem, process, and contribution flow.
+2. Kept the copy intentionally reusable and neutral so the final editorial
+   wording can be refined without redesign churn.
+3. Improved desktop/mobile card hierarchy, spacing, and CTA styling to match
+   the more polished dictionary/civic-mission direction.
+4. Verified the web production build succeeds after the UI pass.
+
 ## Session note (2026-09-14 — web component tests)
 
 1. Restored `EntryItem.test.tsx` imports and aligned its fixture with the
@@ -253,3 +263,19 @@ reported ──verify/hide/restore──► reports resolved (report_count=0)
 ```
 
 Any moderator action (`verify | hide | restore`) on an entry with open reports resolves all of them. Reports never auto-hide content — human moderation decides.
+
+## Session note (2026-09-14)
+
+Responsive public navigation work is currently uncommitted on branch `feat/responsive`:
+1. `apps/web/src/components/Shell.tsx` now provides inline SVG icons and accessible labels for navigation controls.
+2. `apps/web/src/styles.css` keeps desktop labels, switches to compact icon-only controls below 640px, reduces horizontal spacing, and synchronizes sticky-header offset with the responsive header height.
+3. Web tests pass 4/4 and the production web build succeeds.
+4. The patch remains uncommitted; do not switch to `main` unless explicitly requested.
+
+The mobile home layout was refined for a 375px viewport:
+1. The home navbar now includes the search input and icon before the intro content.
+2. The mobile hero search is hidden to prevent a duplicate waterfall layout.
+3. The mobile `Kamusi` heading and description use smaller typography and tighter spacing.
+4. Navbar search submission navigates through the existing `/?q=` search flow.
+5. The mobile navbar search control is now shorter with tighter vertical padding and wider horizontal breathing room; desktop search sizing is unchanged.
+6. Mobile spacing between the intro description and the first result was reduced by tightening hero bottom padding, results top margin, and result-item padding; desktop spacing is unchanged.
